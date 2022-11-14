@@ -107,9 +107,9 @@ out		PICM_P0,	al
 mov		al,			0x08		; setup ICW2 - interrupt type 8 (8-F)
 out		PICM_P1,	al
 
-								; ICW3: 1=IR input has a slave, 0=no slave
-mov		al,			0x00		; setup ICW3 - no slaves
-out		PICM_P1,	al
+								; ICW3: 1=IR input has a slave, 0=no slave			--only set if using master/slave (SNGL=0 in ICW1)
+;mov		al,			0x00		; setup ICW3 - no slaves
+;out		PICM_P1,	al
 
 								; ICW4: 000 | SFNM (1=spec fully nested mode, 0=not) | BUF & MS (0x = nonbuffered, 10 = buffered slave, 11 = buffered master) 
 								; | AEOI (1=auto EOI, 0=normal) | PM (1=x86,0=8085)
