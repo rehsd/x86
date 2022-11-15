@@ -16,267 +16,273 @@
     16                                  ; PPI/LCD code adapted from "The 80x86 IBM PC and Compatible Computers..., 4th Ed." -- Mazidi & Mazidi
     17                                  ; Sample interrupt code adapted from https://stackoverflow.com/questions/51693306/registering-interrupt-in-16-bit-x86-assembly
     18                                  ; Sample interrupt code adapted from "The 80x86 IBM PC and Compatible Computers..., 4th Ed." -- Mazidi & Mazidi
-    19                                  ;
-    20                                  
-    21                                  cpu		286
-    22                                  bits 	16
-    23                                  
-    24                                  section .data
+    19                                  ; https://tiij.org/issues/issues/fall2006/32_Jenkins-PIC/Jenkins-PIC.pdf
+    20                                  ; 80286 Hardware Reference Manual, pg. 5-20
+    21                                  ; http://www.nj7p.org/Manuals/PDFs/Intel/121500-001.pdf
+    22                                  
+    23                                  cpu		286
+    24                                  bits 	16
     25                                  
-    26                                  	;PPI1 (1602 LCD)						BUS_ADDR (BUS addresses are shifted one A2-->pin A1, A1-->pin A0)
-    27                                  	;Base address: 0x00E0					11100000
-    28                                  	;PPI1 pin values
-    29                                  	;A1=0, A0=0		PORTA					11100000	0x00E0
-    30                                  	;A1=0, A0=1		PORTB					11100010	0x00E2
-    31                                  	;A1=1, A0=0		PORTC					11100100	0x00E4
-    32                                  	;A1=1, A0=1		CONTROL REGISTER		11100110	0x00E6
-    33                                  
-    34                                  	PPI1_PORTA	equ	0x00E0
-    35                                  	PPI1_PORTB	equ	0x00E2
-    36                                  	PPI1_PORTC	equ 0x00E4
-    37                                  	PPI1_CTL	equ	0x00E6
-    38                                  	
-    39                                  	
-    40                                  	;PPI1 Configuration
-    41                                  	;							1=I/O Mode	|	00=Mode 0	|	1=PA In		|	0=PC (upper 4) Out	|	0=Mode 0	|	0=PB Out	|	0=PC (lower 4) Out
-    42                                  	CTL_CFG_PA_IN		equ		0b10010000		;0x90
-    43                                  
-    44                                  	;							1=I/O Mode	|	00=Mode 0	|	0=PA Out	|	0=PC (uppper 4) Out	|	0=Mode 0	|	0=PB Out	|	0=PC (lower 4) Out
-    45                                  	CTL_CFG_PA_OUT		equ		0b10000000		;0x80
-    46                                  	
-    47                                  
-    48                                  	RS	equ 0b00000001
-    49                                  	RW 	equ 0b00000010
-    50                                  	E 	equ 0b00000100
-    51                                  
-    52                                  	;Interrupt Controller
-    53                                  	;Base address: 0x0010		;BUS_A1 connected to pin A0 of PIC
-    54                                  	PICM_P0		equ	0x0010		;PIC Master Port 0		ICW1				OCW2, OCW2
-    55                                  	PICM_P1		equ	0x0012		;PIC Master Port 1		ICW2, ICW3, ICW4	OCW1
-    56                                  
-    57                                  	KBD_BUFSIZE equ 32					; Keyboard Buffer length. Must be a power of 2
-    58                                  	KBD_IVT_OFFSET equ 9*4				; Base address of keyboard interrupt (IRQ) in IVT  // 9*4=36=0x24
-    59                                  										; Keyboard: IRQ1, INT number 0x09 (* 4 bytes per INT)
-    60                                  
-    61                                  
-    62                                  section .bss
-    63                                  section .text	;start=0x8000	;vstart=0x80000	;start=0x80000
-    64                                  
-    65                                  org		0x0000		;0x8000
-    66                                  top:				; physically at 0x80000 in physical address space
-    67                                  
-    68                                  ;*** SETUP REGISTERS **********************************
-    69 00000000 31C0                    xor		ax,	ax
-    70 00000002 8ED8                    mov		ds, ax
-    71 00000004 8EC0                    mov		es,	ax				; extra segment
-    72 00000006 89C4                    mov		sp,	ax				; Start stack pointer at 0. It will wrap around (down) to FFFE.
-    73 00000008 B84000                  mov		ax,	0x0040			; First 1K is reserved for interrupt vector table,
-    74 0000000B 8ED0                    mov		ss,	ax				; Start stack segment at the end of the IVT.
-    75                                  
-    76                                  ;push 	cs 					; push CS onto the stack	
-    77                                  ;pop 	ds 					; and pop it into DS so that DS is in ROM
-    78                                  ;*** /SETUP REGISTERS *********************************
-    79                                  
-    80 0000000D FA                      cli					; disable interrupts
+    26                                  section .data
+    27                                  
+    28                                  	;PPI1 (1602 LCD)						BUS_ADDR (BUS addresses are shifted one A2-->pin A1, A1-->pin A0)
+    29                                  	;Base address: 0x00E0					11100000
+    30                                  	;PPI1 pin values
+    31                                  	;A1=0, A0=0		PORTA					11100000	0x00E0
+    32                                  	;A1=0, A0=1		PORTB					11100010	0x00E2
+    33                                  	;A1=1, A0=0		PORTC					11100100	0x00E4
+    34                                  	;A1=1, A0=1		CONTROL REGISTER		11100110	0x00E6
+    35                                  
+    36                                  	PPI1_PORTA	equ	0x00E0
+    37                                  	PPI1_PORTB	equ	0x00E2
+    38                                  	PPI1_PORTC	equ 0x00E4
+    39                                  	PPI1_CTL	equ	0x00E6
+    40                                  	
+    41                                  	
+    42                                  	;PPI1 Configuration
+    43                                  	;							1=I/O Mode	|	00=Mode 0	|	1=PA In		|	0=PC (upper 4) Out	|	0=Mode 0	|	0=PB Out	|	0=PC (lower 4) Out
+    44                                  	CTL_CFG_PA_IN		equ		0b10010000		;0x90
+    45                                  
+    46                                  	;							1=I/O Mode	|	00=Mode 0	|	0=PA Out	|	0=PC (uppper 4) Out	|	0=Mode 0	|	0=PB Out	|	0=PC (lower 4) Out
+    47                                  	CTL_CFG_PA_OUT		equ		0b10000000		;0x80
+    48                                  	
+    49                                  
+    50                                  	RS	equ 0b00000001
+    51                                  	RW 	equ 0b00000010
+    52                                  	E 	equ 0b00000100
+    53                                  
+    54                                  	;Interrupt Controller
+    55                                  	;Base address: 0x0010		;BUS_A1 connected to pin A0 of PIC
+    56                                  	PICM_P0		equ	0x0010		;PIC Master Port 0		ICW1				OCW2, OCW3
+    57                                  	PICM_P1		equ	0x0012		;PIC Master Port 1		ICW2, ICW3, ICW4	OCW1
+    58                                  
+    59                                  	KBD_BUFSIZE equ 32					; Keyboard Buffer length. Must be a power of 2
+    60                                  	KBD_IVT_OFFSET equ 9*4				; Base address of keyboard interrupt (IRQ) in IVT  // 9*4=36=0x24
+    61                                  										; Keyboard: IRQ1, INT number 0x09 (* 4 bytes per INT)
+    62                                  
+    63                                  
+    64                                  section .bss
+    65                                  section .text	;start=0x8000	;vstart=0x80000	;start=0x80000
+    66                                  
+    67                                  org		0x0000		;0x8000
+    68                                  top:				; physically at 0x80000 in physical address space
+    69                                  
+    70                                  ;*** SETUP REGISTERS **********************************
+    71 00000000 31C0                    xor		ax,	ax
+    72 00000002 8ED8                    mov		ds, ax
+    73 00000004 8EC0                    mov		es,	ax				; extra segment
+    74 00000006 89C4                    mov		sp,	ax				; Start stack pointer at 0. It will wrap around (down) to FFFE.
+    75 00000008 B84000                  mov		ax,	0x0040			; First 1K is reserved for interrupt vector table,
+    76 0000000B 8ED0                    mov		ss,	ax				; Start stack segment at the end of the IVT.
+    77                                  
+    78                                  ;push 	cs 					; push CS onto the stack	
+    79                                  ;pop 	ds 					; and pop it into DS so that DS is in ROM
+    80                                  ;*** /SETUP REGISTERS *********************************
     81                                  
-    82 0000000E E87600                  call	lcd_init
-    83 00000011 E83D00                  call	print_message
-    84 00000014 B0A8                    mov		al,		0b10101000	; Go to line 2
-    85 00000016 E88300                  call	lcd_command_write
-    86 00000019 B031                    mov		al,		'1'
-    87 0000001B E89300                  call	lcd_data_write
-    88                                  
-    89                                  ;push 	cs 					; push CS onto the stack	
-    90                                  ;pop 	ds 					; and pop it into DS so that DS is in ROM address space
-    91                                  ;mov		bx,	string_test
-    92                                  ;call	print_message2
-    93                                  ;mov		ax,	0x0
-    94                                  ;mov		ds, ax
-    95                                  
-    96                                  										; kbd_isr is at physical address 0x80047. The following few lines move segment 8000 and offset 0047 into the IVT
-    97 0000001E C7062400[4700]          mov word [KBD_IVT_OFFSET], kbd_isr		; DS set to 0x0000 above. These MOVs are relative to DS.
-    98                                  										; 0x0000:0x0024 = IRQ1 offset in IVT
-    99 00000024 B80080                  mov		ax, 0x8000
-   100 00000027 A32600                  mov word [KBD_IVT_OFFSET+2], ax			; 0x0000:0x0026 = IRQ1 segment in IVT
-   101                                  
-   102                                  								; ICW1: 0001 | LTIM (1=level, 0=edge) | 0 | SNGL (1=single, 0=cascade) | IC4 (1=needed, 0=not)
-   103 0000002A B013                    mov		al,			0b00010011			;0x13		ICW1 - edge, master, ICW4
-   104 0000002C E610                    out		PICM_P0,	al
-   105                                  
-   106                                  								; ICW2: Interrupt assigned to IR0 of the 8259 (usually 0x08)
-   107 0000002E B008                    mov		al,			0x08		; setup ICW2 - interrupt type 8 (8-F)
-   108 00000030 E612                    out		PICM_P1,	al
-   109                                  
-   110                                  								; ICW3: 1=IR input has a slave, 0=no slave			--only set if using master/slave (SNGL=0 in ICW1)
-   111                                  ;mov		al,			0x00		; setup ICW3 - no slaves
-   112                                  ;out		PICM_P1,	al
-   113                                  
-   114                                  								; ICW4: 000 | SFNM (1=spec fully nested mode, 0=not) | BUF & MS (0x = nonbuffered, 10 = buffered slave, 11 = buffered master) 
-   115                                  								; | AEOI (1=auto EOI, 0=normal) | PM (1=x86,0=8085)
-   116 00000032 B001                    mov		al,			0x01		; setup ICW4 - master x86 mode
-   117 00000034 E612                    out		PICM_P1,	al
-   118                                  
-   119                                  								; OCW1: For bits, 0=unmask (enable interrupt), 1=mask
-   120 00000036 B000                    mov		al,			0b00000000	; Unmask IR0-IR7
-   121 00000038 E612                    out		PICM_P1,	al
-   122                                  
-   123 0000003A B032                    mov		al,		'2'
-   124 0000003C E87200                  call	lcd_data_write
-   125                                  
-   126 0000003F FB                      sti										; Enable interrupts
+    82 0000000D FA                      cli					; disable interrupts
+    83                                  
+    84 0000000E E87A00                  call	lcd_init
+    85 00000011 E84100                  call	print_message
+    86 00000014 B0A8                    mov		al,		0b10101000	; Go to line 2
+    87 00000016 E88700                  call	lcd_command_write
+    88 00000019 B031                    mov		al,		'1'
+    89 0000001B E89700                  call	lcd_data_write
+    90                                  
+    91                                  ;push 	cs 					; push CS onto the stack	
+    92                                  ;pop 	ds 					; and pop it into DS so that DS is in ROM address space
+    93                                  ;mov		bx,	string_test
+    94                                  ;call	print_message2
+    95                                  ;mov		ax,	0x0
+    96                                  ;mov		ds, ax
+    97                                  
+    98                                  										; kbd_isr is at physical address 0x80047. The following few lines move segment 8000 and offset 0047 into the IVT
+    99 0000001E C7062400[4B00]          mov word [KBD_IVT_OFFSET], kbd_isr		; DS set to 0x0000 above. These MOVs are relative to DS.
+   100                                  										; 0x0000:0x0024 = IRQ1 offset in IVT
+   101 00000024 B80080                  mov		ax, 0x8000
+   102 00000027 A32600                  mov word [KBD_IVT_OFFSET+2], ax			; 0x0000:0x0026 = IRQ1 segment in IVT
+   103                                  
+   104                                  								; ICW1: 0001 | LTIM (1=level, 0=edge) | Call address interval (1=4, 0=8) | SNGL (1=single, 0=cascade) | IC4 (1=needed, 0=not)
+   105 0000002A B017                    mov		al,			0b00010111			;0x17		ICW1 - edge, master, ICW4
+   106 0000002C E610                    out		PICM_P0,	al
+   107                                  
+   108                                  								; ICW2: Interrupt assigned to IR0 of the 8259 (usually 0x08)
+   109 0000002E B008                    mov		al,			0x08		; setup ICW2 - interrupt type 8 (8-F)
+   110 00000030 E612                    out		PICM_P1,	al
+   111                                  
+   112                                  								; ICW3: 1=IR input has a slave, 0=no slave			--only set if using master/slave (SNGL=0 in ICW1)
+   113                                  ;mov		al,			0x00		; setup ICW3 - no slaves
+   114                                  ;out		PICM_P1,	al
+   115                                  
+   116                                  								; ICW4: 000 | SFNM (1=spec fully nested mode, 0=not) | BUF & MS (0x = nonbuffered, 10 = buffered slave, 11 = buffered master) 
+   117                                  								; | AEOI (1=auto EOI, 0=normal) | PM (1=x86,0=8085)
+   118 00000032 B001                    mov		al,			0x01		; setup ICW4 - master x86 mode
+   119 00000034 E612                    out		PICM_P1,	al
+   120                                  
+   121                                  								; OCW1: For bits, 0=unmask (enable interrupt), 1=mask
+   122 00000036 B0D0                    mov		al,			0b11010000	; Unmask IR0-IR7
+   123 00000038 E612                    out		PICM_P1,	al
+   124                                  
+   125 0000003A B032                    mov		al,		'2'
+   126 0000003C E87600                  call	lcd_data_write
    127                                  
-   128 00000040 B033                    mov		al,		'3'
-   129 00000042 E86C00                  call	lcd_data_write
-   130                                  
-   131                                  .main_loop:
-   132 00000045 EBFE                    	jmp .main_loop
+   128 0000003F FB                      sti										; Enable interrupts
+   129                                  
+   130                                  ;read out OCW1 - interrupt mask register - read OCW1
+   131 00000040 E412                    in		al,		PICM_P1			; Should retrieve 0b11010000 (set above) - *works - reads 0xFFD0 from the data bus
+   132 00000042 E6A0                    out		0x00A0,	al				; testing - *works - writes 0x00D0 to IO address 0x00A0 (no actual device on this IO address)
    133                                  
-   134                                  kbd_isr:
-   135                                  	;to do save registers
+   134 00000044 B033                    mov		al,		'3'
+   135 00000046 E86C00                  call	lcd_data_write
    136                                  
-   137                                  	;do stuff
-   138 00000047 B021                    	mov		al,		'!'			;**not getting here
-   139 00000049 E86500                  	call	lcd_data_write
-   140                                  
-   141                                  	
-   142                                  	;to do restore registers
-   143 0000004C B020                    	mov		al,			0x20		; EOI byte for OCW2 (always 0x20)
-   144 0000004E E610                    	out		PICM_P0,	al			; to port for OCW2
-   145 00000050 CF                      	iret
+   137                                  .main_loop:
+   138 00000049 EBFE                    	jmp .main_loop
+   139                                  
+   140                                  kbd_isr:
+   141                                  	;to do save registers
+   142                                  
+   143                                  	;do stuff
+   144 0000004B B021                    	mov		al,		'!'			;**not getting here
+   145 0000004D E86500                  	call	lcd_data_write
    146                                  
-   147                                  print_message:
-   148 00000051 B052                    	mov		al,		'R'
-   149 00000053 E85B00                  	call	lcd_data_write
-   150 00000056 B065                    	mov		al,		'e'
-   151 00000058 E85600                  	call	lcd_data_write
-   152 0000005B B061                    	mov		al,		'a'
-   153 0000005D E85100                  	call	lcd_data_write
-   154 00000060 B064                    	mov		al,		'd'
-   155 00000062 E84C00                  	call	lcd_data_write
-   156 00000065 B079                    	mov		al,		'y'
-   157 00000067 E84700                  	call	lcd_data_write
-   158 0000006A B03E                    	mov		al,		'>'
-   159 0000006C E84200                  	call	lcd_data_write
-   160 0000006F C3                      	ret
-   161                                  
-   162                                  print_message2:
-   163                                  	; Send a NUL-terminated string to the LCD display;
-   164                                  	; In: DS:BX -> string to print
-   165                                  	; Return: AX = number of characters printed
-   166                                  	; All other registers preserved or unaffected.
-   167                                  	; **thank you, Damouze!
-   168                                  
-   169                                  
-   170                                  
-   171 00000070 53                      	push	bx 					; Save BX 
-   172 00000071 51                      	push	cx 					; and CX onto the sack
-   173 00000072 89D9                    	mov		cx, bx 				; Save contents of BX for later use
-   174                                  	
-   175                                  	.loop:
-   176 00000074 8A07                    		mov		al, [bx] 		; Read byte from [DS:BX]
-   177 00000076 08C0                    		or		al, al 			; Did we encounter a NUL character?
-   178 00000078 7406                    		jz		.return 		; If so, return to the caller
-   179 0000007A E83400                  		call	lcd_data_write 	; call our character print routine
-   180 0000007D 43                      		inc		bx 				; Increment the index
-   181 0000007E EBF4                    		jmp		.loop 			; And loop back
-   182                                  	
-   183                                  	.return: 
-   184 00000080 29CB                    		sub		bx, cx 			; Calculate our number of characters printed
-   185 00000082 89D8                    		mov		ax, bx 			; And load the result into AX
-   186 00000084 59                      		pop		cx 				; Restore CX
-   187 00000085 5B                      		pop		bx 				; and BX from the stack
-   188 00000086 C3                      		ret 					; Return to our caller
-   189                                  
-   190                                  lcd_init:
-   191 00000087 B038                    	mov		al,		0b00111000	;0x38	; Set to 8-bit mode, 2 lines, 5x7 font
-   192 00000089 E81000                  	call	lcd_command_write
-   193 0000008C B00E                    	mov		al,		0b00001110	;0x0E	; LCD on, cursor on, blink off
-   194 0000008E E80B00                  	call	lcd_command_write
-   195 00000091 B001                    	mov		al,		0b00000001	;0x01	; clear LCD
-   196 00000093 E80600                  	call	lcd_command_write
-   197 00000096 B006                    	mov		al,		0b00000110  ;0x06	; increment and shift cursor, don't shift display
-   198 00000098 E80100                  	call	lcd_command_write
-   199 0000009B C3                      	ret
-   200                                  
-   201                                  lcd_command_write:
-   202 0000009C E82700                  	call	lcd_wait
-   203 0000009F 52                      	push	dx
-   204 000000A0 BAE000                  	mov		dx,		PPI1_PORTA			; Get A port address
-   205 000000A3 EE                      	out		dx,		al					; Send al to port A
-   206 000000A4 BAE200                  	mov		dx,		PPI1_PORTB			; Get B port address
-   207 000000A7 B004                    	mov		al,		E					; RS=0, RW=0, E=1
-   208 000000A9 EE                      	out		dx,		al					; Write to port B
-   209 000000AA 90                      	nop									; wait for high-to-low pulse to be wide enough
-   210 000000AB 90                      	nop
-   211 000000AC B000                    	mov		al,		0x0					; RS=0, RW=0, E=0
-   212 000000AE EE                      	out		dx,		al					; Write to port B
-   213 000000AF 5A                      	pop		dx
-   214 000000B0 C3                      	ret
-   215                                  
-   216                                  lcd_data_write:
-   217 000000B1 E81200                  	call	lcd_wait
-   218 000000B4 52                      	push	dx
-   219 000000B5 BAE000                  	mov		dx,		PPI1_PORTA			; Get A port address
-   220 000000B8 EE                      	out		dx,		al					; Write data (e.g. char) to port A
-   221 000000B9 B005                    	mov		al,		(RS | E)			; RS=1, RW=0, E=1
-   222 000000BB BAE200                  	mov		dx,		PPI1_PORTB			; Get B port address
-   223 000000BE EE                      	out		dx,		al					; Write to port B - enable high
-   224 000000BF 90                      	nop									; wait for high-to-low pulse to be wide enough
-   225 000000C0 90                      	nop
-   226 000000C1 B001                    	mov		al,		RS					; RS=1, RW=0, E=0
-   227 000000C3 EE                      	out		dx,		al					; Write to port B - enable low
-   228 000000C4 5A                      	pop		dx
-   229 000000C5 C3                      	ret
-   230                                  
-   231                                  lcd_wait:
-   232 000000C6 50                      	push	ax				
-   233 000000C7 52                      	push	dx
-   234 000000C8 B090                    	mov		al,		CTL_CFG_PA_IN		; Get config value
-   235 000000CA BAE600                  	mov		dx,		PPI1_CTL			; Get control port address
-   236 000000CD EE                      	out		dx,		al					; Write control register on PPI
-   237                                  
-   238                                  	.again:	
-   239 000000CE B002                    		mov		al,		(RW)				; RS=0, RW=1, E=0
-   240 000000D0 BAE200                  		mov		dx,		PPI1_PORTB			; Get B port address
-   241 000000D3 EE                      		out		dx,		al					; Write to port B
-   242 000000D4 B006                    		mov		al,		(RW|E)				; RS=0, RW=1, E=1
-   243 000000D6 EE                      		out		dx,		al					; Write to port B
-   244                                  	
-   245 000000D7 BAE000                  		mov		dx,		PPI1_PORTA			; Get A port address
-   246                                  
-   247 000000DA EC                      		in		al,		dx				; Read data from LCD (busy flag on D7)
-   248 000000DB D0C0                    		rol		al,		1				; Rotate busy flag to carry flag
-   249 000000DD 72EF                    		jc		.again					; If CF=1, LCD is busy
-   250 000000DF B080                    		mov		al,		CTL_CFG_PA_OUT	; Get config value
-   251 000000E1 BAE600                  		mov		dx,		PPI1_CTL		; Get control port address
-   252 000000E4 EE                      		out		dx,		al				; Write control register on PPI
-   253                                  
-   254 000000E5 5A                      	pop	dx
-   255 000000E6 58                      	pop	ax
-   256 000000E7 C3                      	ret
-   257                                  
-   258                                  delay:
-   259 000000E8 60                      	pusha
-   260 000000E9 BD0000                  	mov		bp, 0x0000
-   261 000000EC BE0100                  	mov		si, 0x0001
-   262                                  	.delay2:
-   263 000000EF 4D                      		dec		bp
-   264 000000F0 90                      		nop
-   265 000000F1 75FC                    		jnz		.delay2
-   266 000000F3 4E                      		dec		si
-   267 000000F4 83FE00                  		cmp		si,0    
-   268 000000F7 75F6                    		jnz		.delay2
-   269 000000F9 61                      	popa
-   270 000000FA C3                      	ret
-   271                                  
-   272 000000FB 383032383620617420-     string_test db '80286 at 8 MHz!', 0x0
-   272 00000104 38204D487A2100     
-   273                                  
-   274                                  ;***********************************************************************************************
-   275 0000010B 90<rep 7FEE5h>          times 0x7fff0-($-$$) nop	;Fill ROM with NOPs up to startup address
-   276                                  							;This will get to 0xFFFF0 
+   147                                  	
+   148                                  	;to do restore registers
+   149 00000050 B020                    	mov		al,			0x20		; EOI byte for OCW2 (always 0x20)
+   150 00000052 E610                    	out		PICM_P0,	al			; to port for OCW2
+   151 00000054 CF                      	iret
+   152                                  
+   153                                  print_message:
+   154 00000055 B052                    	mov		al,		'R'
+   155 00000057 E85B00                  	call	lcd_data_write
+   156 0000005A B065                    	mov		al,		'e'
+   157 0000005C E85600                  	call	lcd_data_write
+   158 0000005F B061                    	mov		al,		'a'
+   159 00000061 E85100                  	call	lcd_data_write
+   160 00000064 B064                    	mov		al,		'd'
+   161 00000066 E84C00                  	call	lcd_data_write
+   162 00000069 B079                    	mov		al,		'y'
+   163 0000006B E84700                  	call	lcd_data_write
+   164 0000006E B03E                    	mov		al,		'>'
+   165 00000070 E84200                  	call	lcd_data_write
+   166 00000073 C3                      	ret
+   167                                  
+   168                                  print_message2:
+   169                                  	; Send a NUL-terminated string to the LCD display;
+   170                                  	; In: DS:BX -> string to print
+   171                                  	; Return: AX = number of characters printed
+   172                                  	; All other registers preserved or unaffected.
+   173                                  	; **thank you, Damouze!
+   174                                  
+   175                                  
+   176                                  
+   177 00000074 53                      	push	bx 					; Save BX 
+   178 00000075 51                      	push	cx 					; and CX onto the sack
+   179 00000076 89D9                    	mov		cx, bx 				; Save contents of BX for later use
+   180                                  	
+   181                                  	.loop:
+   182 00000078 8A07                    		mov		al, [bx] 		; Read byte from [DS:BX]
+   183 0000007A 08C0                    		or		al, al 			; Did we encounter a NUL character?
+   184 0000007C 7406                    		jz		.return 		; If so, return to the caller
+   185 0000007E E83400                  		call	lcd_data_write 	; call our character print routine
+   186 00000081 43                      		inc		bx 				; Increment the index
+   187 00000082 EBF4                    		jmp		.loop 			; And loop back
+   188                                  	
+   189                                  	.return: 
+   190 00000084 29CB                    		sub		bx, cx 			; Calculate our number of characters printed
+   191 00000086 89D8                    		mov		ax, bx 			; And load the result into AX
+   192 00000088 59                      		pop		cx 				; Restore CX
+   193 00000089 5B                      		pop		bx 				; and BX from the stack
+   194 0000008A C3                      		ret 					; Return to our caller
+   195                                  
+   196                                  lcd_init:
+   197 0000008B B038                    	mov		al,		0b00111000	;0x38	; Set to 8-bit mode, 2 lines, 5x7 font
+   198 0000008D E81000                  	call	lcd_command_write
+   199 00000090 B00E                    	mov		al,		0b00001110	;0x0E	; LCD on, cursor on, blink off
+   200 00000092 E80B00                  	call	lcd_command_write
+   201 00000095 B001                    	mov		al,		0b00000001	;0x01	; clear LCD
+   202 00000097 E80600                  	call	lcd_command_write
+   203 0000009A B006                    	mov		al,		0b00000110  ;0x06	; increment and shift cursor, don't shift display
+   204 0000009C E80100                  	call	lcd_command_write
+   205 0000009F C3                      	ret
+   206                                  
+   207                                  lcd_command_write:
+   208 000000A0 E82700                  	call	lcd_wait
+   209 000000A3 52                      	push	dx
+   210 000000A4 BAE000                  	mov		dx,		PPI1_PORTA			; Get A port address
+   211 000000A7 EE                      	out		dx,		al					; Send al to port A
+   212 000000A8 BAE200                  	mov		dx,		PPI1_PORTB			; Get B port address
+   213 000000AB B004                    	mov		al,		E					; RS=0, RW=0, E=1
+   214 000000AD EE                      	out		dx,		al					; Write to port B
+   215 000000AE 90                      	nop									; wait for high-to-low pulse to be wide enough
+   216 000000AF 90                      	nop
+   217 000000B0 B000                    	mov		al,		0x0					; RS=0, RW=0, E=0
+   218 000000B2 EE                      	out		dx,		al					; Write to port B
+   219 000000B3 5A                      	pop		dx
+   220 000000B4 C3                      	ret
+   221                                  
+   222                                  lcd_data_write:
+   223 000000B5 E81200                  	call	lcd_wait
+   224 000000B8 52                      	push	dx
+   225 000000B9 BAE000                  	mov		dx,		PPI1_PORTA			; Get A port address
+   226 000000BC EE                      	out		dx,		al					; Write data (e.g. char) to port A
+   227 000000BD B005                    	mov		al,		(RS | E)			; RS=1, RW=0, E=1
+   228 000000BF BAE200                  	mov		dx,		PPI1_PORTB			; Get B port address
+   229 000000C2 EE                      	out		dx,		al					; Write to port B - enable high
+   230 000000C3 90                      	nop									; wait for high-to-low pulse to be wide enough
+   231 000000C4 90                      	nop
+   232 000000C5 B001                    	mov		al,		RS					; RS=1, RW=0, E=0
+   233 000000C7 EE                      	out		dx,		al					; Write to port B - enable low
+   234 000000C8 5A                      	pop		dx
+   235 000000C9 C3                      	ret
+   236                                  
+   237                                  lcd_wait:
+   238 000000CA 50                      	push	ax				
+   239 000000CB 52                      	push	dx
+   240 000000CC B090                    	mov		al,		CTL_CFG_PA_IN		; Get config value
+   241 000000CE BAE600                  	mov		dx,		PPI1_CTL			; Get control port address
+   242 000000D1 EE                      	out		dx,		al					; Write control register on PPI
+   243                                  
+   244                                  	.again:	
+   245 000000D2 B002                    		mov		al,		(RW)				; RS=0, RW=1, E=0
+   246 000000D4 BAE200                  		mov		dx,		PPI1_PORTB			; Get B port address
+   247 000000D7 EE                      		out		dx,		al					; Write to port B
+   248 000000D8 B006                    		mov		al,		(RW|E)				; RS=0, RW=1, E=1
+   249 000000DA EE                      		out		dx,		al					; Write to port B
+   250                                  	
+   251 000000DB BAE000                  		mov		dx,		PPI1_PORTA			; Get A port address
+   252                                  
+   253 000000DE EC                      		in		al,		dx				; Read data from LCD (busy flag on D7)
+   254 000000DF D0C0                    		rol		al,		1				; Rotate busy flag to carry flag
+   255 000000E1 72EF                    		jc		.again					; If CF=1, LCD is busy
+   256 000000E3 B080                    		mov		al,		CTL_CFG_PA_OUT	; Get config value
+   257 000000E5 BAE600                  		mov		dx,		PPI1_CTL		; Get control port address
+   258 000000E8 EE                      		out		dx,		al				; Write control register on PPI
+   259                                  
+   260 000000E9 5A                      	pop	dx
+   261 000000EA 58                      	pop	ax
+   262 000000EB C3                      	ret
+   263                                  
+   264                                  delay:
+   265 000000EC 60                      	pusha
+   266 000000ED BD0000                  	mov		bp, 0x0000
+   267 000000F0 BE0100                  	mov		si, 0x0001
+   268                                  	.delay2:
+   269 000000F3 4D                      		dec		bp
+   270 000000F4 90                      		nop
+   271 000000F5 75FC                    		jnz		.delay2
+   272 000000F7 4E                      		dec		si
+   273 000000F8 83FE00                  		cmp		si,0    
+   274 000000FB 75F6                    		jnz		.delay2
+   275 000000FD 61                      	popa
+   276 000000FE C3                      	ret
    277                                  
-   278                                  reset:						;at 0xFFFF0			*Processor starts reading here
-   279 0007FFF0 EA00000080              	jmp 0x8000:0x0				;EA	00 00 00 80		Jump to TOP: label
-   280                                  
-   281 0007FFF5 01<rep Bh>              times 0x080000-($-$$) db 1	;Fill the rest of ROM with bytes of 0x01 (512 KB total)
+   278 000000FF 383032383620617420-     string_test db '80286 at 8 MHz!', 0x0
+   278 00000108 38204D487A2100     
+   279                                  
+   280                                  ;***********************************************************************************************
+   281 0000010F 90<rep 7FEE1h>          times 0x7fff0-($-$$) nop	;Fill ROM with NOPs up to startup address
+   282                                  							;This will get to 0xFFFF0 
+   283                                  
+   284                                  reset:						;at 0xFFFF0			*Processor starts reading here
+   285 0007FFF0 EA00000080              	jmp 0x8000:0x0				;EA	00 00 00 80		Jump to TOP: label
+   286                                  
+   287 0007FFF5 01<rep Bh>              times 0x080000-($-$$) db 1	;Fill the rest of ROM with bytes of 0x01 (512 KB total)

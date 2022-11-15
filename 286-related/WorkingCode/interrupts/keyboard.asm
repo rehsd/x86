@@ -16,7 +16,9 @@
 ; PPI/LCD code adapted from "The 80x86 IBM PC and Compatible Computers..., 4th Ed." -- Mazidi & Mazidi
 ; Sample interrupt code adapted from https://stackoverflow.com/questions/51693306/registering-interrupt-in-16-bit-x86-assembly
 ; Sample interrupt code adapted from "The 80x86 IBM PC and Compatible Computers..., 4th Ed." -- Mazidi & Mazidi
-;
+; https://tiij.org/issues/issues/fall2006/32_Jenkins-PIC/Jenkins-PIC.pdf
+; 80286 Hardware Reference Manual, pg. 5-20
+; http://www.nj7p.org/Manuals/PDFs/Intel/121500-001.pdf
 
 cpu		286
 bits 	16
@@ -51,7 +53,7 @@ section .data
 
 	;Interrupt Controller
 	;Base address: 0x0010		;BUS_A1 connected to pin A0 of PIC
-	PICM_P0		equ	0x0010		;PIC Master Port 0		ICW1				OCW2, OCW2
+	PICM_P0		equ	0x0010		;PIC Master Port 0		ICW1				OCW2, OCW3
 	PICM_P1		equ	0x0012		;PIC Master Port 1		ICW2, ICW3, ICW4	OCW1
 
 	KBD_BUFSIZE equ 32					; Keyboard Buffer length. Must be a power of 2
@@ -99,8 +101,8 @@ mov word [KBD_IVT_OFFSET], kbd_isr		; DS set to 0x0000 above. These MOVs are rel
 mov		ax, 0x8000
 mov word [KBD_IVT_OFFSET+2], ax			; 0x0000:0x0026 = IRQ1 segment in IVT
 
-								; ICW1: 0001 | LTIM (1=level, 0=edge) | 0 | SNGL (1=single, 0=cascade) | IC4 (1=needed, 0=not)
-mov		al,			0b00010011			;0x13		ICW1 - edge, master, ICW4
+								; ICW1: 0001 | LTIM (1=level, 0=edge) | Call address interval (1=4, 0=8) | SNGL (1=single, 0=cascade) | IC4 (1=needed, 0=not)
+mov		al,			0b00010111			;0x17		ICW1 - edge, master, ICW4
 out		PICM_P0,	al
 
 								; ICW2: Interrupt assigned to IR0 of the 8259 (usually 0x08)
@@ -117,13 +119,17 @@ mov		al,			0x01		; setup ICW4 - master x86 mode
 out		PICM_P1,	al
 
 								; OCW1: For bits, 0=unmask (enable interrupt), 1=mask
-mov		al,			0b00000000	; Unmask IR0-IR7
+mov		al,			0b11010000	; Unmask IR0-IR7
 out		PICM_P1,	al
 
 mov		al,		'2'
 call	lcd_data_write
 
 sti										; Enable interrupts
+
+;read out OCW1 - interrupt mask register - read OCW1
+in		al,		PICM_P1			; Should retrieve 0b11010000 (set above) - *works - reads 0xFFD0 from the data bus
+out		0x00A0,	al				; testing - *works - writes 0x00D0 to IO address 0x00A0 (no actual device on this IO address)
 
 mov		al,		'3'
 call	lcd_data_write
