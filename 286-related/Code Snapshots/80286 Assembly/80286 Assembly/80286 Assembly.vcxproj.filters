@@ -1,0 +1,65 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Build1\lcd2.asm">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="build.cmd" />
+    <None Include="Build1\lcd2.bin">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="Build1\lcd2.lst" />
+    <None Include="Build1\lcd2_LSB.bin">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="Build1\lcd2_MSB.bin">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="test_simple.asm">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="lcd.asm">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="lcd.bin">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="lcd.lst" />
+    <None Include="lcd_LSB.bin">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="lcd_MSB.bin">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="test_simple.bin">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="test_simple.lst" />
+    <None Include="test_simple_LSB.bin">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="test_simple_MSB.bin">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="keyboard.asm">
+      <Filter>Source Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Notes.txt" />
+  </ItemGroup>
+</Project>
