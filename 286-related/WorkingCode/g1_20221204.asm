@@ -159,7 +159,7 @@ call	delay
 
 mov		ax,	0x0801						; cmd08 = print status, 1 = RAM test begin
 call	spi_send_NanoSerialCmd
-call	Test_RAM
+; call	Test_RAM
 mov		ax,	0x0802						; cmd08 = print status, 2 = RAM test finish
 call	spi_send_NanoSerialCmd
 mov		ax,	0x0803						; cmd08 = print status, 3 = PIC1 test begin
