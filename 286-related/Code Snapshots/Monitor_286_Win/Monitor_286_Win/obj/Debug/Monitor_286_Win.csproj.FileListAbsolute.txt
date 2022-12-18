@@ -1,0 +1,11 @@
+C:\Users\rich\source\repos\Monitor_286_Win\Monitor_286_Win\obj\Debug\Monitor_286_Win.csproj.AssemblyReference.cache
+C:\Users\rich\source\repos\Monitor_286_Win\Monitor_286_Win\obj\Debug\Monitor_286_Win.csproj.SuggestedBindingRedirects.cache
+C:\Users\rich\source\repos\Monitor_286_Win\Monitor_286_Win\obj\Debug\Monitor_286_Win.mainForm.resources
+C:\Users\rich\source\repos\Monitor_286_Win\Monitor_286_Win\obj\Debug\Monitor_286_Win.Properties.Resources.resources
+C:\Users\rich\source\repos\Monitor_286_Win\Monitor_286_Win\obj\Debug\Monitor_286_Win.csproj.GenerateResource.cache
+C:\Users\rich\source\repos\Monitor_286_Win\Monitor_286_Win\obj\Debug\Monitor_286_Win.csproj.CoreCompileInputs.cache
+C:\Users\rich\source\repos\Monitor_286_Win\Monitor_286_Win\bin\Debug\Monitor_286_Win.exe.config
+C:\Users\rich\source\repos\Monitor_286_Win\Monitor_286_Win\bin\Debug\Monitor_286_Win.exe
+C:\Users\rich\source\repos\Monitor_286_Win\Monitor_286_Win\bin\Debug\Monitor_286_Win.pdb
+C:\Users\rich\source\repos\Monitor_286_Win\Monitor_286_Win\obj\Debug\Monitor_286_Win.exe
+C:\Users\rich\source\repos\Monitor_286_Win\Monitor_286_Win\obj\Debug\Monitor_286_Win.pdb
