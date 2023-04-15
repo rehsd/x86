@@ -194,30 +194,49 @@
 
 	SPI_SLOW_DELAY_LOW					equ	0x0001		; increase to add delay to slow SPI calls
 
-	; IDE Controller Card				;base address 0x0040 (through 0x007f)
-	;										0b01000000	(base)
-	;								bit values:
-	IDE_DA2								equ 0b00100000
-	IDE_DA1								equ 0b00010000
-	IDE_DA0								equ 0b00001000
-	IDE_CS3								equ 0b00000100
-	IDE_CS1								equ 0b00000010
+	; IDE Controller Card				;base address 0x0040 (through 0x005f)
+	;IDE_BASE							equ 0b010xxxx0		;set with jumpers a7..a4		-b0 is always even to support 286 odd/even byte transfer
+	IDE_CS1_3							equ 0b00001000
+	IDE_DA2								equ 0b00000100
+	IDE_DA1								equ 0b00000010
+	IDE_DA0								equ 0b00000001
 
-	;Registers - Task File					0b01???10-		;CS3 high, CS1 low
-	IDE_REG_DATA						equ 0b01000100		;RW						; 0x0044	(usually 0x01F0)
-	IDE_REG_ERROR						equ 0b01001100		;R						; 0x004c
-	IDE_REG_FEATURES					equ 0b01001100		;W						; 0x004c
-	IDE_REG_SECT_COUNT					equ 0b01010100		;RW						; 0x0054
-	IDE_REG_SECT_NUMBER					equ 0b01011100		;RW						; 0x005c
-	IDE_REG_CYL_LOW						equ 0b01100100		;RW						; 0x0064
-	IDE_REG_CYL_HIGH					equ 0b01101100		;RW						; 0x006c
-	IDE_REG_DRIVE_HEAD					equ	0b01110100		;RW						; 0x0074	
-	IDE_REG_STATUS						equ	0b01111100		;R						; 0x007c	(usually 0x01F7)
-	IDE_REG_COMMAND						equ	0b01111100		;W
+	;Registers - Task File					0b010_0_???_0		;CS3 high, CS1 low			jjjcaaa0   j=jumper, c=cs1/3, a=addr3..1, b0 always 0
 
-	;Registers - Alternate, Device Control	0b01???01-		;CS3 low, CS1 high
-	;IDE_REG2_xxx						equ 0b01000010		;						; 0x0042	(usually 0x03f6)
+	IDE_REG_DATA						equ 0b01000000		;RW						; 0x0040	(usually 0x01F0)
+	IDE_REG_ERROR						equ 0b01000010		;R						; 0x0042
+	IDE_REG_FEATURES					equ 0b01000010		;W						; 0x0042
+	IDE_REG_SECT_COUNT					equ 0b01000100		;RW						; 0x0044
+	IDE_REG_SECT_NUMBER					equ 0b01000110		;RW						; 0x0046
+	IDE_REG_CYL_LOW						equ 0b01001000		;RW						; 0x0048
+	IDE_REG_CYL_HIGH					equ 0b01001010		;RW						; 0x004a
+	IDE_REG_DRIVE_HEAD					equ	0b01001100		;RW						; 0x004c
+	IDE_REG_STATUS						equ	0b01001110		;R						; 0x004e	(usually 0x01F7)
+	IDE_REG_COMMAND						equ	0b01001110		;W						; 0x004e	(usually 0x01F7)
+
+	;Registers - Alternate, Device Control	0b010_1_???_0		;CS3 low, CS1 high		jjjcaaa0   j=jumper, c=cs1/3, a=addr3..1, b0 always 0
+	;IDE_REG2_xxx						equ 0b01010000		;						; 0x0050	(usually 0x03f6)
 	;...
+	;IDE_REG2_xxx						equ 0b01011110		;						; 0x005e	(usually 0x03f6)
+	
+
+	;OLD:										  jjaaacc0
+		;IDE_REG_DATA						equ 0b01000100		;RW						; 0x0044	(usually 0x01F0)
+		;IDE_REG_ERROR						equ 0b01001100		;R						; 0x004c
+		;IDE_REG_FEATURES					equ 0b01001100		;W						; 0x004c
+		;IDE_REG_SECT_COUNT					equ 0b01010100		;RW						; 0x0054
+		;IDE_REG_SECT_NUMBER				equ 0b01011100		;RW						; 0x005c
+		;IDE_REG_CYL_LOW					equ 0b01100100		;RW						; 0x0064
+		;IDE_REG_CYL_HIGH					equ 0b01101100		;RW						; 0x006c
+		;IDE_REG_DRIVE_HEAD					equ	0b01110100		;RW						; 0x0074	
+		;IDE_REG_STATUS						equ	0b01111100		;R						; 0x007c	(usually 0x01F7)
+		;IDE_REG_COMMAND					equ	0b01111100		;W
+
+		;Registers - Alternate, Device Control	0b01???010		;CS3 low, CS1 high
+		;IDE_REG2_xxx						equ 0b01000010		;						; 0x0042	(usually 0x03f6)
+		;IDE_REG2_xxx						equ 0b01001010		;						; 0x004a
+		;...
+
 
 ; VARs
 varstart:

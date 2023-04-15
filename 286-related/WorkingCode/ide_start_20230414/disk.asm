@@ -215,6 +215,8 @@ ide_reset_disk:
 	in al, IDE_REG_STATUS
 .rdylp:
 	in al, IDE_REG_STATUS
+	call	print_char_binary_spi
+	call	print_char_newline_spi
 	and al, 0xc0			; check BSY and RDY
 	cmp al, 0x40			; want BSY clear and RDY set
 	jne short .rdylp
