@@ -118,26 +118,13 @@ section .text
 		call	ide_identify_drive
 		call	print_char_newline_spi
 
-		mov		ah,	0x02						; disk services, function 2
-		mov		al, 01							; number of sectors to read
-
-		mov		ch, 0x00						; track/cylinder number
-		mov		cl, 32							; sector number
-		
-		mov		dh, 0x00						; head number
-		mov		dl, 0x80						; drive # (0)
-		
-		;;mov into es:bx pointer to buffer
-		
-		call	ide_read
-		
-		call	print_char_newline_spi
-		
 		mov		al, '>'
 		call	print_char_spi
 		sti										; enable interrupts
 
 		call	play_sound
+
+		call	load_bootloader
 
 		jmp		main_loop
 
@@ -186,7 +173,57 @@ main_loop:
 %include "lcd.asm"
 %include "os.asm"
 %include "disk.asm"
-%include "empty_isrs.asm"
+%include "isrs_general.asm"
+%include "isrs_empty.asm"
+%include "util.asm"
+
+load_bootloader:
+	
+	;;; load bootloader (copy data)
+
+	push	es
+
+	mov		ax,		0x0000			; es:bx = pointer to buffer / destination
+	mov		es,		ax
+	mov		word [bx],		0x7c00
+	mov		ah,		0x02			; function 0x02
+	mov		al,		0x01			; number of sectors to read
+	mov		dl,		0xa0			; drive 0
+	mov		dh,		0x00			; head 0
+	mov		cl,		0x01			; sector number, 1-based, bottom six bits; cylinder high, top two bits
+	mov		ch,		0x00			; cylinder low
+	call	ide_read
+
+	pop		es
+
+	mov		al,		'}'
+	call	print_char_spi
+	call	print_char_newline_spi
+
+
+	;;; print copied data out to screen
+	mov		cx,		256				; number of words to print
+	mov		bx,		0x7c00
+	call	print_buffer_hex
+
+	call	print_char_newline_spi
+	mov		al,		':'
+	call	print_char_spi
+	mov		al,		')'
+	call	print_char_spi
+	call	print_char_newline_spi
+
+	mov		al,		ds:[0x7c00]
+	call	print_char_hex_spi
+	mov		al,		ds:[0x7c01]
+	call	print_char_hex_spi
+	mov		al,		ds:[0x7c02]
+	call	print_char_hex_spi
+	mov		al,		ds:[0x7c03]
+	call	print_char_hex_spi
+
+	jmp		0x0000:0x7c00
+
 
 setup_interrupts:
 	push	ax
@@ -313,72 +350,7 @@ setup_interrupts:
 
 	pop		ax
 	ret
-
-diverror_isr:
-		push	bx
-		push	es
-		push	0xf000
-		pop		es
-		call	lcd_clear
-		mov		bx,	msg_xcp_diverr
-		call	print_message_lcd				; print message pointed to by bx to LCD
-		call	play_error_sound
-		pop		es
-		pop		bx
-		iret
-
-overflow_isr:
-		push	bx
-		push	es
-		push	0xf000
-		pop		es
-		call	lcd_clear
-		mov		bx,	msg_xcp_overflow
-		call	print_message_lcd				; print message pointed to by bx to LCD
-		call	play_error_sound
-		pop		es
-		pop		bx
-		iret
-
-invalidop_isr:
-		push	bx
-		push	es
-		push	0xf000
-		pop		es
-		call	lcd_clear
-		mov		bx,	msg_xcp_invalidop
-		call	print_message_lcd				; print message pointed to by bx to LCD
-		call	play_error_sound
-		pop		es
-		pop		bx
-		iret
-
-multiplexcp_isr:
-		push	bx
-		push	es
-		push	0xf000
-		pop		es
-		call	lcd_clear
-		mov		bx,	msg_xcp_multi
-		call	print_message_lcd				; print message pointed to by bx to LCD
-		call	play_error_sound
-		pop		es
-		pop		bx
-		iret
-
-geneneralprot_isr:
-		push	bx
-		push	es
-		push	0xf000
-		pop		es
-		call	lcd_clear
-		mov		bx,	msg_xcp_diverr
-		call	msg_xcp_genprot				; print message pointed to by bx to LCD
-		call	play_error_sound
-		pop		es
-		pop		bx
-		iret
-		
+	
 loading:
 	push	bx
 	mov		word [print_char_options], 0b00000000_00000001		; no frame swap
@@ -403,19 +375,6 @@ oled_init:
 	mov		ax,	CMD_OLED_RESET						; cmd06 = OLED init / reset, no param
 	call	spi_send_NanoSerialCmd
 	call	delay
-	ret
-
-es_point_to_rom:
-	push	ax
-	
-	;push	0xf000
-	mov		ax, 0xf000			; Read-only data in ROM at 0x30000 (0xf0000 in address space  0xc0000+0c30000). 
-								; Move es to this by default to easy access to constants.
-	
-	;pop		es
-	mov		es,	ax				; extra segment
-	
-	pop		ax
 	ret
 
 rtc_getTemp:
@@ -486,78 +445,6 @@ rtc_getTime:
 	
 	ret
 
-strings_equal:
-	;compare RAM string to ROM string
-	;in ds:si = keyboard input string (in RAM)
-	;in es:di = comparison string (lookup in ROM)
-	;in cx = length of comparison
-	;out ax = 1 when match, 0 when no match
-
-	push	cx
-	push	si
-	mov		ax	,	0
-
-	cld						;left to right or auto-increment mode 
-	.loop:	
-		cmpsb  				;compare until equal or cx=0
-		jb	.out
-		ja	.out
-	;so far, matching
-		inc	si				; the keyboard buffer is using a word per char, while the data in ROM to compare with is a byte, so skip the high byte of the buffer word
-	loop .loop
-	
-	mov ax, 1	; all match, so set ax to 1
-	.out:
-		pop	si
-		pop	cx
-		ret
-
-get_length_w: 
-	; in: bx => pointing to string where each char is represented by a word
-	; out: dx = length
-
-	push	ax
-	push	bx
-
-	mov		dx,	0
-	dec		bx
-	.loop:  
-		inc     bx
-		inc		dx
-		mov		al,	[bx]
-		inc		bx		; skip the high byte of word
-        cmp     al, 0
-        jne     .loop
-
-	dec		dx
-	dec		dx
-	pop		bx
-	pop		ax
-	ret
-
-get_length_w2: 
-	; in: bx => pointing to string where each char is represented by a word
-	; out: dx = length
-
-	push	ax
-	push	bx
-
-	mov		dx,	0
-	dec		bx
-	.loop:  
-		inc     bx
-		inc		dx
-		mov		al,	[bx]
-		inc		bx		; skip the high byte of word
-        cmp     al, 0
-        jne     .loop
-
-	dec		dx
-	;dec		dx
-	pop		bx
-	pop		ax
-	ret
-
 pic_init:
 	push	ax
 									; ICW1: 0001 | LTIM (1=level, 0=edge) | Call address interval (1=4, 0=8) | SNGL (1=single, 0=cascade) | IC4 (1=needed, 0=not)
@@ -586,154 +473,9 @@ pic_init:
 	pop		ax
 	ret
 
-print_string_to_serial:
-	; Assuming string is in ROM .rodata section
-	; Send a NUL-terminated string;
-	; In: DS:BX -> string to print
-	; Return: AX = number of characters printed
-	; All other registers preserved or unaffected.
 
-	push	bx 					; Save BX 
-	push	cx 					; and CX onto the sack
-	mov		cx, bx 				; Save contents of BX for later use
-	
-	.loop:
-		mov		al, ES:[bx]		; Read byte from [DS:BX]
-		or		al, al 			; Did we encounter a NUL character?
-		jz		.return 		; If so, return to the caller
-		mov		ah,		0x01	; spi cmd 1 - print char
-
-		call	spi_send_NanoSerialCmd
-
-		inc		bx 				; Increment the index
-		jmp		.loop 			; And loop back
-	
-	.return: 
-		sub		bx, cx 			; Calculate our number of characters printed
-		mov		ax, bx 			; And load the result into AX
-		pop		cx 				; Restore CX
-		pop		bx 				; and BX from the stack
-		ret 					; Return to our caller
-
-nibble_to_hex:
-	; Convert nibble to ASCII hex character
-	; In:           AL = nibble
-	; Return:       AL = hex character ('0' through '9', 'A' through 'F')
-	; thank you, @Damouze
-    
-	and     al, 0x0f
-    add     al, 0x90
-    daa
-    adc     al, 0x40
-    daa
-    ret
-
-ToROM:
-	push 	cs 					; push CS onto the stack	
-	pop 	ds 					; and pop it into DS so that DS is in ROM address space
-	ret
-
-ToRAM:
-	;push	ax
-	;mov		ax,	0x0				; return DS back to 0x0
-	;mov		ds, ax
-	;pop		ax
-	
-	push		0x0
-	pop			ds
-	ret
-
-delay:
-	push	bp
-	push	si
-
-	mov		bp, 0xFFFF
-	mov		si, 0x0001
-	.delay2:
-		dec		bp
-		nop
-		jnz		.delay2
-		dec		si
-		cmp		si,0    
-		jnz		.delay2
-
-	pop		si
-	pop		bp
-	ret
-
-delay_configurable:
-	; counter low word in bp
-	; counter high word in si
-	.loop:
-		dec		bp
-		nop
-		jnz		.loop
-		dec		si
-		cmp		si,0    
-		jnz		.loop
-	ret
-
-memcpy_b:
-	; thank you, @Damouze!
-	; memcpy(): copy data from DS:SI to ES:DI
-	;
-	; In:
-	;		DS:SI -> source data
-	;		ES:DI -> target buffer
-	;		CX     = Number of bytes to copy
-	; Return:
-	;		All registers preserved
-	;
-
-	;
-	; Preserve some registers first
-	push	ds
-	push	es
-	push	si
-	push	di
-	push	cx
-
-	rep		movsb
-
-	.return:
-		pop		cx
-		pop		di
-		pop		si
-		pop		es
-		pop		ds
-		ret
-
-memcpy_w:
-	; thank you, @Damouze!
-	; memcpy(): copy data from DS:SI to ES:DI
-	;
-	; In:
-	;		DS:SI -> source data
-	;		ES:DI -> target buffer
-	;		CX     = Number of words to copy
-	; Return:
-	;		All registers preserved
-	;
-
-	;
-	; Preserve some registers first
-	push	ds
-	push	es
-	push	si
-	push	di
-	push	cx
-
-	rep		movsw
-
-	.return:
-		pop		cx
-		pop		di
-		pop		si
-		pop		es
-		pop		ds
-		ret
-
-
+;section .bootloader start=0x7c00
+;bootloader_loc:
 
 times 0x10000-($-$$)-3000 db 0xff	; Fill much of ROM with FFs to allow for faster writing of flash ROMs
 section .wincom start=0x10000
@@ -749,7 +491,6 @@ times 0x05800 db 0xff	; Fill much of ROM with FFs to allow for faster writing of
 section .commandcom start=0x28000
 times 0x0100 db 0x00
 incbin "command.com"
-
 		
 times 0x3800 db 0xff	; Fill much of ROM with FFs to allow for faster writing of flash ROMs
 section .rodata start=0x30000

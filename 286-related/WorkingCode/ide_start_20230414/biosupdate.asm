@@ -311,11 +311,9 @@ print_bios_percent_complete:
 	ret
 
 cmd_update_bios_cont:
-	
 	mov		si, 0x0
 	mov		di, 0x0
 	call	lcd_clear
-
 
 	call	flash_erase
 
