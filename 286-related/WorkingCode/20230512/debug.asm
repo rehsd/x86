@@ -4,7 +4,7 @@
 ; 5 beeps ==> INT13 Disk Services \ unimplemented
 ; 6 beeps ==> INT10 Video Services \ unimplemented
 
-isr_int_15h:
+_isr_int_15h:
 	; take in test values on all registers, print, modify, return
 
 	push	ax
@@ -104,7 +104,7 @@ isr_int_15h:
 	;iret
 	retf 2
 
-print_cursor_pos:
+_print_cursor_pos:
 	push	ax
 	push	ds
 	mov		ax,		0x0000

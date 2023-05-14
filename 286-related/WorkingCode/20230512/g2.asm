@@ -20,48 +20,27 @@
 ;
 ; **************************************
 ;
-;       +--------+ 1FE0:7E00
-;       |BOOT SEC|
-;       |RELOCATE|
-;       |--------| 1FE0:7C00
-;       |LBA PKT |
-;       |--------| 1FE0:7BC0
-;       |--------| 1FE0:7BA0
-;       |BS STACK|
-;       |--------|
-;       |4KBRDBUF| used to avoid crossing 64KB DMA boundary
-;       |--------| 1FE0:63A0
-;       |        |
-;       |--------| 1FE0:3000
-;       | CLUSTER|
-;       |  LIST  |
-;       |--------| 1FE0:2000
-;       |        |
-;       |--------| 0000:7E00
-;       |BOOT SEC| overwritten by max 128k FAT buffer
-;       |ORIGIN  | and later by max 134k loaded kernel
-;       |--------| 0000:7C00
-;       |        |
-;       |--------|
-;       | KERNEL | also used as max 128k FAT buffer
-;       | LOADED | before kernel loading starts
-;       |--------| 0060:0000
-;       |        |
-;       +--------+
-;		|		 |
-;		| KERNEL |
-;		|  	     |
-;		|--------| 0060:0000
-;		|  BIOS  |
-;		|  VARs  |
-;		|  512B  |
-;		|--------| 0040:0000
-;		|	     |	
-;		|   IVT  |
-;		|  1024B |
-;		|	     |
-;		+--------+
-;
+; from boot32lb.asm (fat32 lba)
+;	...
+;	|-------| 1FE0:7E00
+;	|BOOTSEC|
+;	|RELOC.	|
+;	|-------| 1FE0:7C00
+;	...
+;	|-------| 2000:0200
+;	|  FAT  | (only 1 sector buffered)
+;	|-------| 2000:0000
+;	...
+;	|-------| 0000:7E00
+;	|BOOTSEC| overwritten by the kernel, so the
+;	|ORIGIN | bootsector relocates itself up...
+;	|-------| 0000:7C00
+;	...
+;	|-------|
+;	|KERNEL	| maximum size 134k (overwrites bootsec origin)
+;	|LOADED	| (holds 1 sector directory buffer before kernel load)
+;	|-------| 0060:0000
+;	...
 ;
 ;
 ; Additional Comments
@@ -109,7 +88,7 @@
 ; -bounds checks for typing chars -- wrap at end of line & bottom of screen
 ; -...
 
-%include "macros.mac"
+%include "macros.asm"
 
 cpu		286
 bits 	16
@@ -121,17 +100,42 @@ section .bss
 section .text
 	top:				; physically at 0xC0000
 
+		;https://stackoverflow.com/questions/57237499/how-to-properly-setup-ss-bp-and-sp-in-x86-real-mode
+		;https://en.wikibooks.org/wiki/X86_Assembly/Bootloaders
+
+		;MODIFED:
 		;*** SETUP REGISTERS **********************************
 		xor		ax,	ax
 		mov		ds, ax
-		;mov		sp,	ax				; Start stack pointer at 0. It will wrap around (down) to FFFE.
-		mov		bp, 0x0060
-		mov		ax,	0x0040			; First 1K is reserved for interrupt vector table,
-		mov		ss,	ax				; Start stack segment at the end of the IVT.
+		mov		bp, 0x8000
+		mov		ss,	ax
 		mov		sp,	bp
-		mov		ax, 0xf000			; Read-only data in ROM at 0x30000 (0xf0000 in address space  0xc0000+0x30000). 
-									; Move es to this by default to easy access to constants.
-		mov		es,	ax				; extra segment
+		mov		ax, 0xf000				; Read-only data in ROM
+		mov		es,	ax
+		;*** /SETUP REGISTERS *********************************
+
+		;TESTING:
+		;*** SETUP REGISTERS **********************************
+		;xor		ax,	ax
+		;mov		ds, ax
+		;mov		bp, 0x0600
+		;mov		ss,	ax
+		;mov		sp,	bp
+		;mov		ax, 0xf000			; Read-only data in ROM
+		;mov		es,	ax
+		;*** /SETUP REGISTERS *********************************
+
+
+		;ORIGINAL:
+		;*** SETUP REGISTERS **********************************
+		;xor		ax,	ax
+		;mov		ds, ax
+		;mov		bp, 0x0060
+		;mov		ax,	0x0040			; First 1K is reserved for interrupt vector table,
+		;mov		ss,	ax				; Start stack segment at the end of the IVT.
+		;mov		sp,	bp
+		;mov		ax, 0xf000			; Read-only data in ROM at 0x30000 (0xf0000 in address space  0xc0000+0x30000). 
+		;mov		es,	ax				; extra segment
 		;*** /SETUP REGISTERS *********************************
 
 		cli										; disable interrupts

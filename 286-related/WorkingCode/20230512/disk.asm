@@ -377,7 +377,6 @@ print_buffer_hex:
 
 	push	ax
 	push	bx
-	;push	cx
 
 	.loop_print:
 		mov		ax, [bx]
@@ -388,7 +387,6 @@ print_buffer_hex:
 		add		bx, 2
 		loop	.loop_print
 
-	;pop	cx
 	pop	bx
 	pop ax
 	ret
@@ -415,7 +413,7 @@ print_buffer:
 	pop ax
 	ret
 
-print_dap:
+_print_dap:
 	; DS:SI = pointer to disk address packet (DAP)
 	; *DAP packet:	
 	;	label		offset	|  size  |  description
@@ -485,6 +483,7 @@ isr_int_13h:				; disk services ISR
 	mov		al,	':'
 	call	print_char_spi
 	pop		ax
+
 	xchg	ah, al
 	call	print_char_hex_spi
 	xchg	ah, al
@@ -565,26 +564,26 @@ isr_int_13h:				; disk services ISR
 		cmp		dl,		0x80
 		jne		.other08
 
-		push	es
-		mov		ax, 0x0
-		mov		es, ax
-		
-		mov		cl,		es:[di_d0_adj_sect_track]			;sectors per track
+		push	ds
+		call	to0000ds
+
+		mov		cl,		[di_d0_adj_sect_track]			;sectors per track
 		and		cl,		0b00111111						;out==>sectors per track, low 6 bits of cx
-		mov		dx,		es:[di_d0_adj_num_cyl]			
+		mov		dx,		[di_d0_adj_num_cyl]			
 		dec		dl
 		mov		ch,		dl								;out==>cylinders, low 8 bits in ch
 		and		dh,		0b00000011
 		shl		dh,		6
 		or		cl,		dh								;out==>cylinders, high 2 bits in cl
-		mov		dh,		es:[di_d0_adj_num_heads]			;number heads
+		mov		dh,		[di_d0_adj_num_heads]			;number heads
 		dec		dh
 
-		mov		ah,		0x0							;no error
-		mov		bl,		0x0							;drive type
+		pop		ds
+
+		mov		ah,		0x0								;no error
+		mov		bl,		0x0								;drive type
 		mov		dl,		0x1								;number drives attached
-		pop		es
-		;es:di
+		
 		clc							;clear carry flag = success
 		jmp		.out
 
@@ -611,21 +610,19 @@ isr_int_13h:				; disk services ISR
 			cmp		dl,		0x80
 			jne		.other
 			
-			push	es
-			mov		ax, 0x0
-			mov		es, ax
-			
+			push	ds
+			call	to0000ds
+
 			mov		ah,		0x03		;fixed disk present
-			mov		cx,		es:[di_d0_curr_capacity_hi]
-			mov		dx,		es:[di_d0_curr_capacity_lo]
+			mov		cx,		[di_d0_curr_capacity_hi]
+			mov		dx,		[di_d0_curr_capacity_lo]
 			
-			pop		es
+			pop		ds
 			clc							;clear carry flag = success
 			jmp		.out
 		.other:
 			mov		ah,		0x00
 			clc							;clear carry flag = success
-			;stc							;set carry flag = error (no floppy drive currently)
 			jmp		.out
 	.disk_change_status:				;0x16
 		cmp		ah,		0x16			
@@ -644,6 +641,7 @@ isr_int_13h:				; disk services ISR
 	.check_extns_present:				;0x41
 		cmp		ah,		0x41
 		jne		.ext_read_sectors
+
 		; DL = drive index (0x80 for first disk)
 		; BX = 0x55aa
 		; Out:
@@ -664,6 +662,7 @@ isr_int_13h:				; disk services ISR
 		cmp		ah,		0x42
 		jne		.ext_read_drive_params
 		; https://en.wikipedia.org/wiki/INT_13H,	https://wiki.osdev.org/Disk_access_using_the_BIOS_(INT_13h), https://wiki.osdev.org/ATA_read/write_sectors	
+		
 		; DL = drive index (0x80 for first disk)
 		; DS:SI = pointer to disk address packet (DAP)
 		;	*DAP packet:	
@@ -818,18 +817,26 @@ isr_int_13h:				; disk services ISR
 		;https://en.wikipedia.org/wiki/INT_13H
 		;DL =  drive number (80h=drive 0, 81h=drive 1)
 		;DS:SI = pointer to result buffer
-		;	00h..01h	2 bytes	size of Result Buffer (set this to 1Eh)
-		;	02h..03h	2 bytes	information flags
-		;	04h..07h	4 bytes	physical number of cylinders = last index + 1
+		;	00h..01h	2 bytes (0)	size of Result Buffer (set this to 1Eh)
+		;	02h..03h	2 bytes	(2) information flags
+		;						0 DMA boundary errors handled transparently
+		;						1 cylinder/head/sectors-per-track information is valid
+		;						2 removable drive
+		;						3 write with verify supported
+		;						4 drive has change-line support (required if drive >= 80h is removable)
+		;						5 drive can be locked (required if drive >= 80h is removable)
+		;						6 CHS information set to maximum supported values, not current media
+		;						15-7 reserved (0)
+		;	04h..07h	4 bytes	(4) physical number of cylinders = last index + 1
 		;					(because index starts with 0)
-		;	08h..0Bh	4 bytes	physical number of heads = last index + 1
+		;	08h..0Bh	4 bytes	(8) physical number of heads = last index + 1
 		;					(because index starts with 0)
-		;	0Ch..0Fh	4 bytes	physical number of sectors per track = last index
+		;	0Ch..0Fh	4 bytes	(12) physical number of sectors per track = last index
 		;					(because index starts with 1)
-		;	10h..17h	8 bytes	absolute number of sectors = last index + 1
+		;	10h..17h	8 bytes	(16) absolute number of sectors = last index + 1
 		;					(because index starts with 0)
-		;	18h..19h	2 bytes	bytes per sector
-		;	1Ah..1Dh	4 bytes	optional pointer to Enhanced Disk Drive (EDD) configuration parameters 
+		;	18h..19h	2 bytes	(24) bytes per sector
+		;	1Ah..1Dh	4 bytes	(26) optional pointer to Enhanced Disk Drive (EDD) configuration parameters 
 		;					which may be used for subsequent interrupt 13h Extension calls (if supported)
 		;Out:
 		;	CF clear on no error, set on error
@@ -839,14 +846,14 @@ isr_int_13h:				; disk services ISR
 		mov		ax, 0x0
 		mov		es, ax
 
-		mov		ax,						0x001e							;size of result buffer = 0x1e	
+		mov		ax,						0x001e								;size of result buffer = 0x1e	
 		mov		word ds:[si+0],			ax								
-		mov		ax,						0x0000							;information flags
+		mov		ax,						0x0000								;information flags
 		mov		word ds:[si+2],			ax
-		mov		ax,						0x00							;cyl msw  (only have a word of data from identify drive, not two bytes)
+		mov		ax,						0x00								;cyl msw  (only have a word of data from identify drive, not two bytes)
 		mov		word ds:[si+4+2],		ax
-		mov		ax,						es:[di_d0_adj_num_cyl]			;cyl lsw
-		dec		ax														;!************************
+		mov		ax,						es:[di_d0_adj_num_cyl]				;cyl lsw
+		;dec		ax														;!************************
 		mov		word ds:[si+4+0],		ax
 		
 		mov		ax,						0x00								;heads msw (only have a word of data from identify drive, not two bytes)
@@ -855,18 +862,18 @@ isr_int_13h:				; disk services ISR
 		mov		ax,						es:[di_d0_adj_num_heads]			;heads lsw
 		mov		word ds:[si+8+0],		ax
 		
-		mov		ax,						0x00							;sectors/track msw  (only have a word of data from identify drive, not two bytes)
+		mov		ax,						0x00								;sectors/track msw  (only have a word of data from identify drive, not two bytes)
 		mov		word ds:[si+12+2],		ax
 		mov		ax,						es:[di_d0_adj_sect_track]			;sectors/track lsw
 		mov		word ds:[si+12+0],		ax
 
-		mov		ax,						0x00						;num sectors dd3  (only have a word of data from identify drive, not two bytes)
+		mov		ax,						0x00								;num sectors dd3  (only have a word of data from identify drive, not two bytes)
 		mov		word ds:[si+16+6],		ax
-		mov		ax,						0x00		;num sectors dd2  (only have a word of data from identify drive, not two bytes)
+		mov		ax,						0x00								;num sectors dd2  (only have a word of data from identify drive, not two bytes)
 		mov		word ds:[si+16+4],		ax
-		mov		ax,						es:[di_d0_curr_capacity_hi]		;num sectors dd1
+		mov		ax,						es:[di_d0_curr_capacity_hi]			;num sectors dd1
 		mov		word ds:[si+16+2],		ax
-		mov		ax,						es:[di_d0_curr_capacity_lo]		;num sectors dd0
+		mov		ax,						es:[di_d0_curr_capacity_lo]			;num sectors dd0
 		mov		word ds:[si+16+0],		ax
 		mov		ax,						es:[di_d0_bytes_sect]				;bytes per sector
 		mov		word ds:[si+24],		ax

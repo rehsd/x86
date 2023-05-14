@@ -3,7 +3,7 @@ varstart:
 	;*** first 1024 bytes ***
 	ivt times 1024			db		?				; prevent writing in the same space as the IVT (using nop 0x90 for visibility in binary)
 
-	;*** next 356 bytes ***
+	;*** next 228 bytes ***
 	kb_buffer times 64		dw      ?					; 128-word keyboard buffer
 	;os_buffer times 64		dw      ?					; 128-word buffer for operating system keyboard input (i.e., commands)
 	tile5e_backup times 25	dw		?					; 5x5, word per pixel for color = 25 words (even frame)

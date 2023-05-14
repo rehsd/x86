@@ -42,13 +42,13 @@ isr_video:						; INT10H
 		cmp		ah,		0x0a
 		jne		.writepixel
 		push	ds
-		push	es
+		;push	es
 		call	to0000ds
-		call	es_point_to_rom
+		;call	es_point_to_rom
 		call	print_char_vga
 		call	print_char_spi
 		
-		pop		es
+		;pop		es
 		pop		ds
 		jmp		.out
 	.writepixel:			; 0x0c
@@ -78,15 +78,15 @@ isr_video:						; INT10H
 		cmp		ah,		0x0e
 		jne		.get_video_state
 		push	ds
-		push	es
+		;push	es
 		call	to0000ds
-		call	es_point_to_rom
+		;call	es_point_to_rom
 
 		;mov		word [vga_param_color],	0xff00
 		call	print_char_vga
 		call	print_char_spi
 		
-		pop		es
+		;pop		es
 		pop		ds
 
 		jmp		.out
@@ -97,10 +97,26 @@ isr_video:						; INT10H
 		;BH = current display page
 		
 		cmp		ah,		0x0f
-		jne		.swapframe
+		jne		.char_gen_routine
 		mov		ah,		106				; 106 columns
 		mov		al,		0x12			; 640x480 16 color graphics (VGA)
 		mov		bh,		0
+		jmp		.out
+	.char_gen_routine:
+	;!!!!!!!!!!!!! TO DO IMPLEMENT:
+		cmp		ah,		0x11
+		jne		.swapframe
+		push	ax
+		call	lcd_clear
+		mov		al,		'!'
+		call	print_char
+		mov		al,		'i'
+		call	print_char
+		mov		al,		'1'
+		call	print_char
+		mov		al,		'0'
+		call	print_char
+		pop		ax
 		jmp		.out
 	.swapframe:				; 0xb0
 		cmp		ah,		0xb0
@@ -121,8 +137,7 @@ isr_video:						; INT10H
 		jne		.writepixel_extended
 		; OUT BX = print char options
 		push	ds
-		push	0x0000
-		pop		ds
+		call	to0000ds
 		mov		bx,		[print_char_options]
 		pop		ds
 		jmp		.out
@@ -168,13 +183,14 @@ isr_video:						; INT10H
 		jne		.unimplemented
 
 		push	ds
-		push	es
+		;push	es
 		call	to0000ds
-		call	es_point_to_rom
-
+		
+		;call	es_point_to_rom
+		call	print_char_hex_spi
 		call	print_char_hex_vga
 
-		pop		es
+		;pop		es
 		pop		ds
 		jmp		.out
 	.unimplemented:
@@ -203,7 +219,7 @@ isr_video:						; INT10H
 		call	print_char_hex
 		xchg	ah, al
 		call	print_char_hex
-		call	debug_print_interrupt_info_10
+		call	debug_print_interrupt_info_sm
 		call	play_error_sound
 		call	delay
 		call	play_error_sound
@@ -218,12 +234,13 @@ isr_video:						; INT10H
 		hlt		; temporary
 	.out:
 		pop		es
+
 		;call	debug_print_interrupt_info_10
 		;call	print_char_newline_spi
 
 		iret
 
-debug_print_interrupt_info_10:
+_debug_print_interrupt_info_10:
 	push	ax		; save ax
 
 	xchg	ah, al
@@ -977,8 +994,7 @@ vga_swap_frame:
 	; swaps frames on VGA card
 	push	ax
 	push	ds
-	mov		ax,		0x0000
-	mov		ds,		ax
+	call	to0000ds
 
 	in		ax,			0x00a0	;VGA_REG
 	xor		ax,			0b0000_0000_0001_0000	; bit4 = 286 active frame (VGA out active frame is opposite automatically)
@@ -1292,8 +1308,9 @@ vga_draw_test_pattern:
 print_char_vga:
 	pusha
 	push	ds
+	push	es
 	call	to0000ds
-
+	call	es_point_to_rom
 	; al has ascii value of char to print
 
 	and		ax,								0x00ff							; only care about lower byte (this line should not be needed... safety for now)
@@ -1312,6 +1329,7 @@ print_char_vga:
 		cmp		al,		0x0a
 		jne		.notlinefeed
 		add		word	[cursor_pos_v],		9
+		pop		es
 		pop		ds
 		popa
 		ret
@@ -1321,6 +1339,7 @@ print_char_vga:
 		jne		.notcr
 		mov		word	[cursor_pos_h],		0
 		;add		word	[cursor_pos_v],		9		;****
+		pop		es
 		pop		ds
 		popa
 		ret
@@ -1474,9 +1493,11 @@ print_char_vga:
 		;since the cursor is near the right edge, CRLF
 		call	vga_nextline
 	.out2:
+		pop		es
 		pop		ds
 		popa
 		ret
+
 
 vga_draw_pixel:
 	; description:	draws a pixel at x,y pixel position with specified 2-byte color
@@ -1492,12 +1513,13 @@ vga_draw_pixel:
 	push	bp									; save base pointer
 	mov		bp,				sp					; update base pointer to current stack pointer
 	
+	push	ds
 	push	ax
 	push	bx
 	push	dx
 	push	si
 	push	es
-
+	call	to0000ds
 
 	mov		dx,				[bp+6]				; pass y position in dx
 	call	vga_set_segment_from_xy				; update VGA segment based on y position
@@ -1515,6 +1537,7 @@ vga_draw_pixel:
 	pop		dx
 	pop		bx
 	pop		ax
+	pop		ds
 	pop		bp
 	ret		6									; return, pop 6 bytes for 3 params off stack
 
@@ -1563,12 +1586,13 @@ draw_pixel:
 	;				[return]	none
 	;				* using memory addresses for easy & execution speed (vs. stack)
 
+	push	ds
 	push	es
 	push	si
 	push	ax
 	push	bx
 	push	dx
-	push	ds
+	call	to0000ds
 	
 	mov		si, 0xa000				; segment start (i.e., 0xa000 as beginning of VRAM window)
 	mov		es, si
@@ -1585,12 +1609,12 @@ draw_pixel:
 	mov		ax,				[vga_param_color]
 	mov		es:[bx],		ax
 
-	pop		ds
 	pop		dx
 	pop		bx
 	pop		ax
 	pop		si
 	pop		es
+	pop		ds
 	ret
 
 vga_nextline:
@@ -1603,7 +1627,7 @@ vga_nextline:
 
 print_message_vga:
 	; Send a NUL-terminated string to the VGA display;
-	; In: DS:BX -> string to print
+	; In: ES:BX -> string to print
 	; Return: AX = number of characters printed
 	; All other registers preserved or unaffected.
 	; **thank you, Damouze!
@@ -1670,7 +1694,7 @@ print_CSmessage_vga:
 	mov		cx, bx 				; Save contents of BX for later use
 	
 	.loop:
-		mov		al, [bx]		; Read byte from [DS:BX]
+		mov		al, [bx]		; Read byte from [CS:BX]
 		or		al, al 			; Did we encounter a NUL character?
 		jz		.return 		; If so, return to the caller
 		call	print_char_vga
@@ -1704,3 +1728,16 @@ print_char_hex_vga:
 
 	pop		ax
 	ret
+
+;print_char_hex_vga:
+;	; Print the byte in AL as hex digits to the screen
+;	; In:	AL = byte to print
+;	; Return: Nothing
+;	; thank you, @Damouze
+;    
+;	rol     al, 4
+;    call    nibble_to_hex
+;    call    print_char_vga
+;    rol     al, 4 
+;    call    print_char_vga
+;    ret

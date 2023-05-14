@@ -1,287 +1,220 @@
 ; unimplemented isr's...
 
 isr_int_01h:
-	; ***** DEBUG *************
-	push	ax
-	mov		al, 0x01
-	call	debug_print_intnum
-	pop		ax
-	; **** /DEBUG *************
-
-	mov		ax,	0
-	mov		ds, ax
-	mov		ax, 0xf000
-	mov		es, ax
-	
+	push	di
 	mov		di,				0x01
-	
-	mov		ax,	0x0d
-	call	print_char_hex
-
-	mov		ax, ' '
-	call	print_char
-	mov		ax, ' '
-	call	print_char
-	mov		ax, '0'
-	call	print_char
-	mov		ax, '1'
-	call	print_char
-
-	mov		ax, ' '
-	call	print_char
-
-	call	display_int
-
-	iret
+	jmp		display_int
 
 isr_int_02h:		
+	push	di
 	mov		di,				0x02
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_03h:				;breakpoint
+	push	di
 	mov		di,				0x03
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_05h:		
+	push	di
 	mov		di,				0x05
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_07h:		
+	push	di
 	mov		di,				0x07
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_0Bh:		
+	push	di
 	mov		di,				0x0b
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_0Ch:		
+	push	di
 	mov		di,				0x0c
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_0Dh:		
-	; ***** DEBUG *************
-	push	ax
-	mov		al, 0x0d
-	call	debug_print_intnum
-	pop		ax
-	; **** /DEBUG *************
-
-	mov		ax,	0
-	mov		ds, ax
-	mov		ax, 0xf000
-	mov		es, ax
-	
+	push	di
 	mov		di,				0x0d
-	
-	mov		ax,	0x0d
-	call	print_char_hex
-
-	mov		ax, ' '
-	call	print_char
-	mov		ax, 'g'
-	call	print_char
-	mov		ax, 'p'
-	call	print_char
-	mov		ax, 'f'
-	call	print_char
-
-	mov		ax, ' '
-	call	print_char
-
-	call	display_int
-
-	iret
+	jmp		display_int
 
 isr_int_0Eh:		
+	push	di
 	mov		di,				0x0e
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_0Fh:		
+	push	di
 	mov		di,				0x0f
-	call	display_int
-	iret
+	jmp		display_int
 
 ;isr_int_12h:		;Memory Size Determination, see isrs_general.asm
 
-
 ;isr_int_13h:		;disk services, see disk.asm
 
-
 isr_int_14h:		
+	push	di
 	mov		di,				0x14
-	call	display_int
-	iret
+	jmp		display_int
 
-;isr_int_15h:			; temporarily re-purposing in debug.asm
-;	mov		di,				0x15
-;	call	display_int
-;	iret
-
-
+isr_int_15h:			; previous: temporarily re-purposing in debug.asm
+	push	di
+	mov		di,				0x15
+	jmp		display_int
 
 isr_int_17h:		
+	push	di
 	mov		di,				0x17
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_18h:		
+	push	di
 	mov		di,				0x18
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_19h:		
+	push	di
 	mov		di,				0x19
-	call	display_int
-	iret
+	jmp		display_int
 
-dos_services_isr:		; interrupt 0x21
-	mov		di,				0x21
-	call	display_int
-	iret
+
 
 isr_int_1bh:		
+	push	di
 	mov		di,				0x1b
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_1ch:		
+	push	di
 	mov		di,				0x1c
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_1dh:		
+	push	di
 	mov		di,				0x1d
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_1eh:		
+	push	di
 	mov		di,				0x1e
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_1fh:		
+	push	di
 	mov		di,				0x1f
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_20h:		
+	push	di
 	mov		di,				0x20
-	call	display_int
-	iret
+	jmp		display_int
 
+dos_services_isr:		; interrupt 0x21
+	push	di
+	mov		di,				0x21
+	jmp		display_int
+	
 isr_int_22h:		
+	push	di
 	mov		di,				0x22
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_23h:		
+	push	di
 	mov		di,				0x23
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_24h:	
+	push	di
 	mov		di,				0x24
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_25h:		
+	push	di
 	mov		di,				0x25
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_26h:		
+	push	di
 	mov		di,				0x26
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_27h:		
+	push	di
 	mov		di,				0x27
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_28h:		
+	push	di
 	mov		di,				0x28
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_29h:		
+	push	di
 	mov		di,				0x29
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_2ah:		
+	push	di
 	mov		di,				0x2a
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_2bh:		
+	push	di
 	mov		di,				0x2b
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_2ch:
+	push	di
 	mov		di,				0x2c
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_2dh:		
+	push	di
 	mov		di,				0x2d
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_2eh:		
+	push	di
 	mov		di,				0x2e
-	call	display_int
-	iret
+	jmp		display_int
 
 isr_int_2fh:
+	push	di
 	mov		di,				0x2f
-	call	display_int
-	iret
+	jmp		display_int
 
 display_int:
-	; ***** DEBUG *************
-	push	ax
-	mov		al, 0xdb
-	call	debug_print_intnum
-	pop		ax
-	; **** /DEBUG *************
-
 	push	ax
 	mov		ax,	0
 	mov		ds, ax
 	mov		ax, 0xf000
 	mov		es, ax
 
-	mov		ax,		di
 	call	lcd_clear
-	push	ax
-	mov		ax, '!'
+	mov		al, '!'
 	call	print_char
-	mov		ax, 'i'
+	mov		al, 'i'
 	call	print_char
-	mov		ax, 'r'
+	mov		al, 'r'
 	call	print_char
-	mov		ax, 'q'
+	mov		al, 'q'
 	call	print_char
-	mov		ax, ':'
+	mov		al, ':'
 	call	print_char
 	call	lcd_line2
-	pop		ax
-	call	print_char_hex
+	
+	mov		ax,		di
 
+	call	print_char_hex
+	call	debug_print_intnum
 	call	play_error_sound
 	call	delay
 	call	play_error_sound
-
-	pop		ax
-
 	call	debug_print_interrupt_info
-	ret
+	
+	pop		ax
+	pop		di
+	iret

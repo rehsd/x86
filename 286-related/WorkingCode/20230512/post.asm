@@ -1,5 +1,5 @@
 post_tests:
-	call	post_RAM
+	;call	post_RAM
 	;call	post_VideoRegister
 	;call	post_VRAM
 	;call	post_PPIs
@@ -10,7 +10,7 @@ post_tests:
 
 	ret
 
-post_VideoRegister:
+_post_VideoRegister:
 	push	ax
 
 	mov		ax, CMD_PRINT_STATUS_OLED + OLED_STATUS_VGA_REG_TEST_BEGIN
@@ -37,7 +37,7 @@ post_VideoRegister:
 		pop		ax
 		ret
 
-post_VRAM:
+_post_VRAM:
 	; VRAM		Accessed through 0xA0000-0xAFFFF segment
 	;			Two frames - each at 1 MB,	with lower 0.5 MB of each used by VGA output
 	;										upper 0.5 MB can be used as general memory
@@ -105,7 +105,7 @@ post_VRAM:
 		pop		ax
 		ret
 
-post_RAM:
+_post_RAM:
 	; RAM  (640 KB) = 0x00000-0x9FFFF
 	; assuming ds=0x0000
 
@@ -174,7 +174,7 @@ post_RAM:
 		pop		ax
 		ret
 
-		post_PPIs:
+post_PPIs:
 	; this testing requires a PPI that supports reading the configuration
 	; Intersil 82c55a - yes (to verify)
 	; Harris - yes (to verify)
@@ -272,6 +272,8 @@ post_VIA:
 
 post_MathCo:
 	push	ax
+	push	ds
+	call	to0000ds
 	
 	mov		ax,	CMD_PRINT_STATUS_OLED + OLED_STATUS_MATHCO_TEST_BEGIN						; cmd08 = print status, 9 = MathCo test begin
 	call	spi_send_NanoSerialCmd
@@ -316,6 +318,7 @@ post_MathCo:
 		call	spi_send_NanoSerialCmd
 	.out:
 		pop		ax
+		pop		ds
 		ret
 
 post_PIC:

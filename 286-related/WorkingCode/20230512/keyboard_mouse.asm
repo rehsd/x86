@@ -1,8 +1,11 @@
 keyboard_init:
+	push		ds
+	call		to0000ds
 	mov	word	[kb_flags],		0x0000
 	mov word	[kb_wptr],		0x0000
 	mov word	[kb_rptr],		0x0000
 	;call		clear_os_buffer		
+	pop			ds
 	ret
 
 ;mouse_init:
@@ -58,8 +61,7 @@ mouse_services_isr:		; INT 33H
 	push	ds
 	push	es
 
-	push	0x0
-	pop		ds
+	call	to0000ds
 
 	.show:
 		cmp		ax,		0x0100

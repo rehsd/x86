@@ -61,11 +61,6 @@ print_char:
 print_char_hex:
 	push	ax
 
-	; mov		al,		'x'
-	; call	print_char
-	; pop		ax
-	; push	ax
-	
 	and		al,		0xf0		; upper nibble of lower byte
 	shr		al,		4
 	cmp		al,		0x0a
@@ -84,17 +79,19 @@ print_char_hex:
 	pop		ax
 	ret
 
-print_hex_byte:
+print_char_hex2:
 	; Print the byte in AL as hex digits to the screen
 	; In:	AL = byte to print
 	; Return: Nothing
 	; thank you, @Damouze
     
+	push	ax
 	rol     al, 4
     call    nibble_to_hex
     call    print_char
     rol     al, 4 
     call    print_char
+	pop		ax
     ret
 
 print_char_dec:
@@ -172,7 +169,6 @@ lcd_wait:
 	mov		al,					CTL_CFG_PA_IN		; Get config value
 	mov		dx,					PPI1_CTL			; Get control port address
 	out		dx,					al					; Write control register on PPI
-	;mov		[ppi1_ccfg],		al					; Remember current config
 	.again:	
 		mov		al,				(RW)				; RS=0, RW=1, E=0
 		mov		dx,				PPI1_PORTB			; Get B port address
@@ -188,7 +184,6 @@ lcd_wait:
 		mov		al,				CTL_CFG_PA_OUT	; Get config value
 		mov		dx,				PPI1_CTL		; Get control port address
 		out		dx,				al				; Write control register on PPI
-		;mov		[ppi1_ccfg],	al					; Remember current config
 
 	pop	dx
 	pop	ax

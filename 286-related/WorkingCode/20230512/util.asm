@@ -374,10 +374,10 @@ print_string_to_serial:
 	; Return: AX = number of characters printed
 	; All other registers preserved or unaffected.
 
+	push	ds
 	push	bx 					; Save BX 
 	push	cx 					; and CX onto the sack
 	push	es
-	push	ds
 	mov		cx, bx 				; Save contents of BX for later use
 	call	to0000ds
 	call	es_point_to_rom
@@ -397,10 +397,10 @@ print_string_to_serial:
 		sub		bx, cx 			; Calculate our number of characters printed
 		mov		ax, bx 			; And load the result into AX
 
-		pop		ds
 		pop		es
 		pop		cx 				; Restore CX
 		pop		bx 				; and BX from the stack
+		pop		ds
 		ret
 
 get_length_w: 
