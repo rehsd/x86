@@ -1,0 +1,183 @@
+module  Bus_Control_386_Pal_1   flag    '-r3'
+title   '80386 Local Bus Controller - Pal1 Intel Corp'
+
+        BC386P1         device 'P16R8' ;                "use a 16R8 B-speed PAL for l6MHz 386 
+" Constants: 
+        ON      =       1; 
+        OFF =   0; 
+        H       =       1;
+        L       =       0;
+        x       =       .X.;                                            " ABEL 'don't care' symbol
+        c       =       .C.;                                            " ABEL 'clocking input' symbol 
+
+" State definitions for BUSSTATE (bus cycle state):
+        IDLEBUS         =       ^b01;                           "bus is idle or first CLK of unpipelined
+        PIPEBUS         =       ^b10;                           "first CLK of pipelined cycle
+        ACTIVEBUS       =       ^b00;                           "subsequent CLKs of active bus 
+        ILLEGALBUS      =       ^b11;                           "unused
+
+" State definitions for LOCALSTATE (local cycle state):
+        WAITING         =       ^b101;                          "waiting for next bus cycle
+        SAMPLECS        =       ^b100;                          "CLK2 before ALE falls and CS is sampled
+        CMDDELAY        =       ^b000;                          "delay before CMD active
+        IO                      =       ^b010;                          "IO CMD active
+        ENDIO           =       ^b110;                          "IO CMD inactive
+        MEMORY          =       ^b011;                          "1WS CMD active
+        FLOAT           =       ^b111;                          "data bus float delay
+        NOTLOCAL        =       ^b001;                          "OWS cycle or bus cycle not to the local bus
+        
+" State definitions for SEQUENCE (local cycle sequence counter): 
+        SEQ0            =       ^b00;
+        SEQ1            =       ^b01;
+        SEQ2            =       ^b10;
+        SEQ3            =       ^b11;
+        
+" Pin names:
+                " Input pins
+        CLK             pin             2;
+        ADS                     pin             3;
+        READY           pin             4;
+        WR                      pin             5;
+        CS0WS           pin             6;
+        CS1WS           pin             7;
+        CSIO            pin             8;
+        RESET           pin             9;
+        CLK2            pin             1;
+        OE                      pin             11;
+                " Output pins
+        NA                      pin             19;
+        IDLE            pin             18;
+        PIPE            pin             17;
+        L2                      pin             16;
+        L1                      pin             15;
+        L0                      pin             14;
+        Q1                      pin             13;
+        Q0                      pin             12;
+        
+        BUSSTATE        =               [PIPE, IDLE];
+        LOCALSTATE      =               [L2, L1, L0];
+        SEQUENCE        =               [Q1, Q0];
+        
+" Macros:
+        COUNTING        macro
+                { (Q1 # Q0) };
+        
+        LOWCOUNTING     macro
+                { (             Q0) };
+                
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+state_diagram BUSSTATE
+
+        state IDLEBUS:
+                if RESET then IDLEBUS
+                        else if !CLK # ADS then IDLEBUS
+                                else ACTIVEBUS;
+                                
+        state ACTIVEBUS:
+                if RESET then IDLEBUS
+                        else if !CLK # READY then ACTIVEBUS
+                                else if !ADS then PIPEBUS
+                                        else IDLEBUS; 
+        
+        state PIPEBUS:
+                if RESET then IDLEBUS
+                        else if !CLK then PIPEBUS
+                                else ACTIVEBUS; 
+
+        state ILLEGALBUS:
+                goto IDLEBUS; 
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+state_diagram LOCALSTATE
+
+        state WAITING: 
+                NA := OFF;
+                if RESET then WAITING 
+                else if !CLK 
+                        # ( ADS & IDLE) 
+                        #( !CSIO & LOWCOUNTING) then WAITING
+                                                                        else SAMPLECS;
+                                                                        
+        state SAMPLECS:
+                NA := OFF;
+                if RESET then WAITING
+                else if !CS1WS then MEMORY
+                        else if !CSIO then CMDDELAY
+                                                        else NOTLOCAL; 
+
+        state CMDDELAY:
+                NA := OFF;
+                if RESET then WAITING
+                else IO;
+                
+        state IO:
+                NA := (!COUNTING & CLK) # NA;
+                if RESET then WAITING
+                else if !NA then IO
+                                        else ENDIO; 
+
+        state ENDIO: 
+                NA := OFF;
+                if RESET then WAITING
+                else if LOWCOUNTING then ENDIO
+                                                        else FLOAT; 
+                                                        
+        state MEMORY:
+                NA := (!NA & CLK) # (NA & !CLK);
+                if RESET then WAITING
+                else if LOWCOUNTING then MEMORY
+                                                        else FLOAT; 
+
+        state FLOAT:
+                NA := OFF; 
+                if RESET then WAITING
+                else if !IDLE & !CLK & CS0WS & CS1WS & CSIO  then NOTLOCAL
+                        else if COUNTING then FLOAT
+                                                        else WAITING; 
+
+        state NOTLOCAL:
+                NA := OFF;
+                if RESET then WAITING
+                else if READY # !CLK then NOTLOCAL
+                        else if COUNTING then FLOAT
+                                else if !ADS then SAMPLECS
+                                                                else WAITING; 
+                                                                
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+state_diagram SEQUENCE          "counter for LOCALS TATE 
+
+        state SEQ3:
+                if RESET then SEQ0
+                        else if !CLK then SEQ3
+                                                        else SEQ2; 
+                                                        
+        state SEQ2:
+                if RESET then SEQ0
+                        else if !CLK then SEQ2
+                                                        else SEQ1; 
+                                                        
+        state SEQ1:
+                if RESET then SEQ0
+                        else if !CLK then SEQ1
+                                                        else SEQ0; 
+
+        state SEQ0:
+                case 
+                        RESET                                                                                   : SEQ0;
+                        !RESET & (LOCALSTATE == WAITING)                                : SEQ0;
+                        !RESET & (LOCALSTATE == SAMPLECS)       & !CS1WS        : SEQ2;
+                        !RESET & (LOCALSTATE == SAMPLECS)       & CS1WS         : SEQ0;
+                        !RESET & (LOCALSTATE == CMDDELAY)       & WR            : SEQ3;
+                        !RESET & (LOCALSTATE == CMDDELAY)       & !WR           : SEQ2;
+                        !RESET & (LOCALSTATE == IO)             & !NA           : SEQ0;
+                        !RESET & (LOCALSTATE == IO)             & NA            : SEQ1;
+                        !RESET & (LOCALSTATE == ENDIO)                                  : SEQ3;
+                        !RESET & (LOCALSTATE == MEMORY)                                 : SEQ1;
+                        !RESET & (LOCALSTATE == FLOAT)                                  : SEQ1;
+                        !RESET & (LOCALSTATE == NOTLOCAL)                               : SEQ0;
+endcase; 
+
+end Bus_Control_386_Pal_1;

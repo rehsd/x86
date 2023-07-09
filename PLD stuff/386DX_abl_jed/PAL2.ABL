@@ -1,0 +1,148 @@
+module          Bus_Control_386_Pal_2   flag '-r3'
+
+title   '80386 Local Bus Controllre - pal 2             Intel Corp'
+
+        BC386P2         device          'P16R8';                "use a 16R8 B-speed PAL for 16MHz 386
+        
+" Constants:
+        ON      =       1; 
+        OFF =   0; 
+        H       =       1;
+        L       =       0;
+        x       =       .X.;                                            " ABEL 'don't care' symbol
+        c       =       .C.;                                            " ABEL 'clocking input' symbol
+        
+" State definitions for LOCALSTATE (local cycle state):
+
+        WAITING         =       ^b101;                          "waiting for next bus cycle
+        SAMPLECS        =       ^b100;                          "CLK2 before ALE falls and CS is sampled
+        CMDDELAY        =       ^b000;                          "delay before CMD active
+        IO                      =       ^b010;                          "IO CMD active
+        ENDIO           =       ^b110;                          "IO CMD inactive
+        MEMORY          =       ^b011;                          "1WS CMD active
+        FLOAT           =       ^b111;                          "data bus float delay
+        NOTLOCAL        =       ^b001;                          "OWS cycle or bus cycle not to the local bus
+        
+" Pin names:
+                " Input pins
+        CLK             pin             2;
+        MIO                     pin             3;
+        DC                      pin             4;
+        WR                      pin             5;
+        L0                      pin             6;
+        L1                      pin             7;
+        L2                      pin             8;
+        CS0WS           pin             9;
+        CLK2            pin             1;
+        OE                      pin             11;
+                " Output pins
+        MRDC            pin             19;
+        MWTC            pin             18;
+        IORC            pin             17;
+        IOWC            pin             16;
+        INTA            pin             15;
+        ALE                     pin             14;
+        DEN                     pin             13;
+        RDY                     pin             12;     
+        
+        LOCALSTATE      =               [L2, L1, L0];
+        
+" Macros:
+
+                ifMEMORYREAD macro
+                        { ( MIO &               !WR) };
+                ifMEMORYWRITE macro
+                        { ( MIO & DC &   WR) };
+                ifIOREAD macro
+                        { (!MIO & DC &  !WR) };
+                ifIOWRITE macro
+                        { (!MIO & DC &   WR) };
+                ifINTACK macro
+                        { (!MIO & !DC & !WR) };
+                        
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+equations
+
+!MRDC :=
+         ((LOCALSTATE==WAITING)         & OFF)
+        #((LOCALSTATE==SAMPLECS)        & ifMEMORYREAD & !CS0WS)
+        #((LOCALSTATE==CMDDELAY)        & OFF)
+        #((LOCALSTATE==IO)                      & ((ifMEMORYREAD & DEN) # !MRDC))
+        #((LOCALSTATE==ENDIO)           & ((ifMEMORYREAD & DEN) # !MRDC))
+        #((LOCALSTATE==MEMORY)          & ((ifMEMORYREAD & DEN) # !MRDC))
+        #((LOCALSTATE==FLOAT)           & OFF)
+        #((LOCALSTATE==NOTLOCAL)        & (!MRDC                & (RDY # !CLK)));
+        
+!MWTC :=
+         ((LOCALSTATE==WAITING)         & OFF)
+        #((LOCALSTATE==SAMPLECS)        & ifMEMORYWRITE & !CS0WS)
+        #((LOCALSTATE==CMDDELAY)        & OFF)
+        #((LOCALSTATE==IO)                      & ((ifMEMORYWRITE & DEN) # !MWTC & RDY))
+        #((LOCALSTATE==ENDIO)           & ((ifMEMORYWRITE & DEN) # !MWTC & RDY))
+        #((LOCALSTATE==MEMORY)          & ((ifMEMORYWRITE & DEN) # !MWTC))
+        #((LOCALSTATE==FLOAT)           & OFF)
+        #((LOCALSTATE==NOTLOCAL)        & (!MWTC                &       RDY));
+        
+!IORC :=
+         ((LOCALSTATE==WAITING)         & OFF)
+        #((LOCALSTATE==SAMPLECS)        & ifIOREAD & !CS0WS)
+        #((LOCALSTATE==CMDDELAY)        & OFF)
+        #((LOCALSTATE==IO)                      & ((ifIOREAD & DEN) # !IORC))
+        #((LOCALSTATE==ENDIO)           & ((ifIOREAD & DEN) # !IORC))
+        #((LOCALSTATE==MEMORY)          & ((ifIOREAD & DEN) # !IORC))
+        #((LOCALSTATE==FLOAT)           & OFF)
+        #((LOCALSTATE==NOTLOCAL)        & (!IORC                &       (RDY # !CLK)));
+        
+!IOWC :=
+         ((LOCALSTATE==WAITING)         & OFF)
+        #((LOCALSTATE==SAMPLECS)        & ifIOWRITE & !CS0WS)
+        #((LOCALSTATE==CMDDELAY)        & OFF)
+        #((LOCALSTATE==IO)                      & ((ifIOWRITE & DEN) # !IOWC & RDY))
+        #((LOCALSTATE==ENDIO)           & ((ifIOWRITE & DEN) # !IOWC & RDY))
+        #((LOCALSTATE==MEMORY)          & ((ifIOWRITE & DEN) # !IOWC))
+        #((LOCALSTATE==FLOAT)           & OFF)
+        #((LOCALSTATE==NOTLOCAL)        & (!IOWC                &       RDY));
+        
+!INTA :=
+         ((LOCALSTATE==WAITING)         & OFF)
+        #((LOCALSTATE==SAMPLECS)        & ifINTACK & !CS0WS)
+        #((LOCALSTATE==CMDDELAY)        & OFF)
+        #((LOCALSTATE==IO)                      & ((ifINTACK & DEN) # !INTA))
+        #((LOCALSTATE==ENDIO)           & ((ifINTACK & DEN) # !INTA))
+        #((LOCALSTATE==MEMORY)          & ((ifINTACK & DEN) # !INTA))
+        #((LOCALSTATE==FLOAT)           & OFF)
+        #((LOCALSTATE==NOTLOCAL)        & (!INTA                &       (RDY # !CLK)));
+        
+!ALE :=
+         ((LOCALSTATE==WAITING)         & ON)
+        #((LOCALSTATE==SAMPLECS)        & OFF)
+        #((LOCALSTATE==CMDDELAY)        & OFF)
+        #((LOCALSTATE==IO)                      & OFF)
+        #((LOCALSTATE==ENDIO)           & OFF)
+        #((LOCALSTATE==MEMORY)          & OFF)
+        #((LOCALSTATE==FLOAT)           & OFF)
+        #((LOCALSTATE==NOTLOCAL)        & (     (DEN & CS0WS) # ALE # (!RDY & CLK)));
+        
+!DEN :=
+         ((LOCALSTATE==WAITING)         & OFF)
+        #((LOCALSTATE==SAMPLECS)        & OFF)
+        #((LOCALSTATE==CMDDELAY)        & OFF)
+        #((LOCALSTATE==IO)                      & ON)
+        #((LOCALSTATE==ENDIO)           & ON)
+        #((LOCALSTATE==MEMORY)          & ON)
+        #((LOCALSTATE==FLOAT)           & (!MWTC # !IOWC))
+        #((LOCALSTATE==NOTLOCAL)        & ( (!ALE & !CS0WS) # !DEN) & (RDY # !CLK));
+
+!RDY :=
+         ((LOCALSTATE==WAITING)         & OFF)
+        #((LOCALSTATE==SAMPLECS)        & OFF)
+        #((LOCALSTATE==CMDDELAY)        & OFF)
+        #((LOCALSTATE==IO)                      & OFF)
+        #((LOCALSTATE==ENDIO)           & ON)
+        #((LOCALSTATE==MEMORY)          & ((RDY & !DEN & CLK) # (!RDY & !CLK)))
+        #((LOCALSTATE==FLOAT)           & OFF)
+        #((LOCALSTATE==NOTLOCAL)        & ( (RDY & CLK & ( (!MRDC # !IORC # !INTA)
+                                                    #((!MWTC # !IOWC) & !DEN)))
+                                                    #(!RDY & !CLK)));
+                                                                                        
+end Bus_Control_386_Pal_2

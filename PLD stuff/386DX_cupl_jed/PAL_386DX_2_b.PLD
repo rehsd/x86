@@ -1,0 +1,93 @@
+Name     PAL_386DX_2_b ;
+PartNo   00 ;
+Date     7/5/2023 ;
+Revision 01 ;
+Designer rehsd ;
+Company  None ;
+Assembly None ;
+Location  ;
+Device   g16v8ms ;
+/* *************** INPUT PINS *********************/
+PIN	1	=	PIN_CLK2 ;
+PIN	2	=	PIN_CLK ;
+PIN	3	=	PIN_MIO ;
+PIN	4	=	PIN_DC ;
+PIN	5	=	PIN_WR ;
+PIN	6	=	PIN_L0 ;
+PIN	7	=	PIN_L1 ;
+PIN	8	=	PIN_L2 ;
+PIN	9	=	PIN_CS0WS ;
+PIN	11	=	PIN_OE ;
+
+/* *************** OUTPUT PINS *********************/
+PIN	12	=	PIN_RDY ;
+PIN	13	=	PIN_DEN ;
+PIN	14	=	PIN_ALE ;
+PIN	15	=	PIN_INTA ;
+PIN	16	=	PIN_IOWC ;
+PIN	17	=	PIN_IORC ;
+PIN	18	=	PIN_MWTC ;
+PIN	19	=	PIN_MRDC ;
+
+!PIN_MRDC.D	=	(!PIN_L0 & PIN_L1 & !PIN_MRDC)
+			# (PIN_L1 & !PIN_L2 & !PIN_MRDC)
+			# (!PIN_CLK & PIN_L0 & !PIN_L2 & !PIN_MRDC)
+			# (PIN_L0 & !PIN_L2 & !PIN_MRDC & PIN_RDY)
+			# (!PIN_CS0WS & !PIN_L0 & !PIN_L1 & PIN_L2 & PIN_MIO & !PIN_WR)
+			# (PIN_DEN & !PIN_L0 & PIN_L1 & PIN_MIO & !PIN_WR)
+			# (PIN_DEN & PIN_L1 & !PIN_L2 & PIN_MIO & !PIN_WR) ;
+
+!PIN_MWTC.D	=	(PIN_L0 & PIN_L1 & !PIN_L2 & !PIN_MWTC)
+			# (!PIN_L0 & PIN_L1 & !PIN_MWTC & PIN_RDY)
+			# (PIN_L0 & !PIN_L2 & !PIN_MWTC & PIN_RDY)
+			# (!PIN_CS0WS & PIN_DC & !PIN_L0 & !PIN_L1 & PIN_L2 & PIN_MIO & PIN_WR)
+			# (PIN_DC & PIN_DEN & !PIN_L0 & PIN_L1 & PIN_MIO & PIN_WR)
+			# (PIN_DC & PIN_DEN & PIN_L1 & !PIN_L2 & PIN_MIO & PIN_WR) ;
+
+!PIN_IORC.D	=	(!PIN_IORC & !PIN_L0 & PIN_L1)
+			# (!PIN_IORC & PIN_L1 & !PIN_L2)
+			# (!PIN_CLK & !PIN_IORC & PIN_L0 & !PIN_L2)
+			# (!PIN_IORC & PIN_L0 & !PIN_L2 & PIN_RDY)
+			# (!PIN_CS0WS & PIN_DC & !PIN_L0 & !PIN_L1 & PIN_L2 & !PIN_MIO & !PIN_WR)
+			# (PIN_DC & PIN_DEN & !PIN_L0 & PIN_L1 & !PIN_MIO & !PIN_WR)
+			# (PIN_DC & PIN_DEN & PIN_L1 & !PIN_L2 & !PIN_MIO & !PIN_WR) ;
+
+!PIN_IOWC.D	=	(!PIN_IOWC & PIN_L0 & PIN_L1 & !PIN_L2)
+			# (!PIN_IOWC & !PIN_L0 & PIN_L1 & PIN_RDY)
+			# (!PIN_IOWC & PIN_L0 & !PIN_L2 & PIN_RDY)
+			# (!PIN_CS0WS & PIN_DC & !PIN_L0 & !PIN_L1 & PIN_L2 & !PIN_MIO & PIN_WR)
+			# (PIN_DC & PIN_DEN & !PIN_L0 & PIN_L1 & !PIN_MIO & PIN_WR)
+			# (PIN_DC & PIN_DEN & PIN_L1 & !PIN_L2 & !PIN_MIO & PIN_WR) ;
+
+!PIN_INTA.D	=	(!PIN_INTA & !PIN_L0 & PIN_L1)
+			# (!PIN_INTA & PIN_L1 & !PIN_L2)
+			# (!PIN_CLK & !PIN_INTA & PIN_L0 & !PIN_L2)
+			# (!PIN_INTA & PIN_L0 & !PIN_L2 & PIN_RDY)
+			# (!PIN_CS0WS & !PIN_DC & !PIN_L0 & !PIN_L1 & PIN_L2 & !PIN_MIO & !PIN_WR)
+			# (!PIN_DC & PIN_DEN & !PIN_L0 & PIN_L1 & !PIN_MIO & !PIN_WR)	
+			# (!PIN_DC & PIN_DEN & PIN_L1 & !PIN_L2 & !PIN_MIO & !PIN_WR) ;
+
+!PIN_ALE.D		=	(!PIN_ALE & !PIN_CLK & !PIN_CS0WS & !PIN_L2)
+			# (!PIN_ALE & !PIN_CLK & !PIN_DEN & !PIN_L2)
+			# (!PIN_ALE & !PIN_CS0WS & !PIN_L2 & PIN_RDY)
+			# (!PIN_L0)
+			# (PIN_L1)
+			# (!PIN_ALE & !PIN_DEN & !PIN_L2 & PIN_RDY) ;
+
+!PIN_DEN.D		=	(!PIN_L0 & PIN_L1)
+			# (PIN_L1 & !PIN_L2)
+			# (!PIN_IOWC & PIN_L1)
+			# (PIN_L1 & !PIN_MWTC)
+			# (!PIN_CLK & !PIN_DEN & PIN_L0 & !PIN_L2)
+			# (!PIN_DEN & PIN_L0 & PIN_L2 & PIN_RDY)
+			# (!PIN_ALE & !PIN_CLK & !PIN_CS0WS & PIN_L0 & !PIN_L2)
+			# (!PIN_ALE & !PIN_CS0WS & PIN_L0 & !PIN_L2 & PIN_RDY) ;
+
+!PIN_RDY.D		=	(!PIN_L0 & PIN_L1 & PIN_L2)
+			# (!PIN_CLK & PIN_L0 & !PIN_L2 & !PIN_RDY)
+			# (PIN_CLK & !PIN_DEN & PIN_L0 & PIN_L1 & !PIN_L2 & PIN_RDY)
+			# (PIN_CLK & !PIN_INTA & PIN_L0 & !PIN_L1 & !PIN_L2 & PIN_RDY)
+			# (PIN_CLK & !PIN_IORC & PIN_L0 & !PIN_L1 & !PIN_L2 & PIN_RDY)
+			# (!PIN_CLK & PIN_L0 & !PIN_L1 & !PIN_L2 & !PIN_MRDC & PIN_RDY)
+			# (PIN_CLK & !PIN_DEN & !PIN_IOWC & PIN_L0 & !PIN_L2 & PIN_RDY)
+			# (PIN_CLK & !PIN_DEN & PIN_L0 & !PIN_L2 & !PIN_MWTC & PIN_RDY) ;

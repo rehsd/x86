@@ -1,0 +1,43 @@
+Name     386SX ;
+PartNo   00 ;
+Date     7/3/2023 ;
+Revision 01 ;
+Designer rehsd (adapted from work of Al Weidner, VLSI) ;
+Company  None ;
+Assembly None ;
+Location  ;
+Device   g16v8a ;
+
+/* *************** INPUT PINS *********************/
+PIN 1	=	CLK2 ;
+PIN 2	=	MIO3 ;		
+PIN 3	=	WRT3 ;
+PIN 4	=      CMD3 ;
+PIN 5	=	!ADS ;
+PIN 6	=	!RDY286 ;
+PIN 7	=	!BHE3 ;
+PIN 8	=	RST286 ;
+PIN 9	=	NC ;
+/* PIN 10	=	GND ; */
+PIN 11	=	!OE ;
+
+/* *************** OUTPUT PINS *********************/
+
+PIN 12	=	!BHE2 ;
+PIN 13	=	!SFAZ1 ;
+PIN 14	=	!S0 ;
+PIN 15	=	!S1 ;
+PIN 16	=	MIO ;
+PIN 17	=	ADS2 ;
+PIN 18	=	SYSCLK ;
+PIN 19	=	RST386 ;
+/* PIN 20	=	VCC ; */
+
+!ADS2.D = !(ADS & !ADS2) ;
+BHE2 = BHE3&ADS2 # BHE2&!ADS2 ;
+SFAZ1.D = ADS2&RDY286 ;
+!SYSCLK.D = SYSCLK # SFAZ1 ;
+!RST386 = !(RST286 # RST386&RST286 # RST386&SYSCLK) ;
+!MIO.D = !((ADS&MIO3)#(!ADS&MIO)) ;
+S1.D = ADS2&RDY286&!WRT3 #ADS2&RDY286&!CMD3&MIO3 #SFAZ1&S1 ;
+S0.D = ADS2&RDY286&WRT3&MIO3 #ADS2&RDY286&CMD3&WRT3 #ADS2&RDY286&!MIO3&!WRT3 #SFAZ1&S0 ;
