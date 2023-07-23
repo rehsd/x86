@@ -42,12 +42,15 @@ PIN	19	=	PIN_NA ;
 			# (!PIN_IDLE & PIN_READY & !PIN_RESET)
 			# (!PIN_ADS & PIN_CLK & !PIN_PIPE & !PIN_RESET) ;
 
-!PIN_NA.D	=	(!PIN_L1)
+!PIN_NA.D	=	'b'0 ; /* keep high and not use address pipelining for now */
+			/*
+			(!PIN_L1)
 			# (PIN_L2)
 			# (!PIN_CLK & !PIN_NA)
 			# (PIN_CLK & PIN_L0 & PIN_NA)
 			# (!PIN_L0 & !PIN_NA & PIN_Q0)
 			# (!PIN_L0 & !PIN_NA & PIN_Q1) ;
+			*/
 
 !PIN_L2.D	=	(!PIN_CLK & !PIN_L1 & !PIN_L2 & !PIN_RESET)
 			# (!PIN_L0 & !PIN_L2 & !PIN_NA & !PIN_RESET)
@@ -55,6 +58,7 @@ PIN	19	=	PIN_NA ;
 			# (PIN_L0 & PIN_L1 & !PIN_L2 & PIN_Q0 & !PIN_RESET)
 			# (!PIN_L0 & !PIN_L1 & !PIN_RESET)
 			# (!PIN_CLK & PIN_CS0WS & PIN_CS1WS & PIN_CSIO & !PIN_IDLE & PIN_L0 & PIN_L1 & PIN_L2 & !PIN_RESET) ;
+
 
 !PIN_L1.D	=	(PIN_RESET)
 			# (!PIN_CLK & PIN_L0 & !PIN_L1)
